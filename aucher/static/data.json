@@ -1,0 +1,534 @@
+{
+  "Insights": [
+    {
+      "Insight ID": 1,
+      "Venue Type": "Festival",
+      "Age": "ALL",
+      "Gender": "ALL",
+      "HHI": "ALL",
+      "Value Type": "Qualitative Insight",
+      "Value": " 86% Fans who know their group ahead of time",
+      "Fan Journey": ["recnybmXOyTh5qRgP"],
+      "ref": "recSpmJmlpaQGbbcq"
+    },
+    {
+      "Insight ID": 2,
+      "Venue Type": "Festival",
+      "Age": "ALL",
+      "Gender": "ALL",
+      "HHI": "ALL",
+      "Value Type": "Metric",
+      "Value": " 2.26",
+      "Fan Journey": ["recyp4dTL5kQoTRIr"],
+      "Value Name": "Average tickets per order",
+      "ref": "recuyCZiv74tZJoRq"
+    },
+    {
+      "Insight ID": 4,
+      "Venue Type": "Festival",
+      "Age": "ALL",
+      "Gender": "F",
+      "HHI": "ALL",
+      "Value Type": "Metric",
+      "Value": "2.32",
+      "Fan Journey": ["recyp4dTL5kQoTRIr"],
+      "Value Name": "Average tickets per order",
+      "ref": "recfWPHwyMIOlxkj9"
+    },
+    {
+      "Insight ID": 5,
+      "Venue Type": "Festival",
+      "Age": "ALL",
+      "Gender": "M",
+      "HHI": "ALL",
+      "Value Type": "Metric",
+      "Value": "2.2",
+      "Fan Journey": ["recyp4dTL5kQoTRIr"],
+      "Value Name": "Average tickets per order",
+      "ref": "recyv14K5JPLwPdFS"
+    },
+    {
+      "Insight ID": 6,
+      "Venue Type": "Festival",
+      "Age": "Gen Z",
+      "Gender": "F",
+      "HHI": "ALL",
+      "Value Type": "Metric",
+      "Value": "1.79",
+      "Fan Journey": ["recyp4dTL5kQoTRIr"],
+      "Value Name": "Average tickets per order",
+      "ref": "recRfttZagEB233yI"
+    },
+    {
+      "Insight ID": 7,
+      "Venue Type": "Festival",
+      "Age": "Millennial",
+      "Gender": "M",
+      "HHI": "ALL",
+      "Value Type": "Metric",
+      "Value": "2.62",
+      "Fan Journey": ["recyp4dTL5kQoTRIr"],
+      "Value Name": "Average tickets per order",
+      "ref": "recJWOZQKq1lbrxMh"
+    },
+    {
+      "Insight ID": 8,
+      "Venue Type": "Festival",
+      "Age": "Gen X",
+      "Gender": "F",
+      "HHI": "ALL",
+      "Value Type": "Metric",
+      "Value": "2.45",
+      "Fan Journey": ["recyp4dTL5kQoTRIr"],
+      "Value Name": "Average tickets per order",
+      "ref": "recWSfvqeSduCNNwU"
+    },
+    {
+      "Insight ID": 9,
+      "Venue Type": "Festival",
+      "Age": "Baby Boomer",
+      "Gender": "M",
+      "HHI": "ALL",
+      "Value Type": "Metric",
+      "Value": "2.53",
+      "Fan Journey": ["recyp4dTL5kQoTRIr"],
+      "Value Name": "Average tickets per order",
+      "ref": "recrXYjEWwbOQd0Zm"
+    },
+    {
+      "Insight ID": 10,
+      "Venue Type": "Festival",
+      "Age": "Millennial",
+      "Gender": "M",
+      "HHI": "ALL",
+      "Value Type": "Audience Size",
+      "Value": "High",
+      "ref": "recJ4QR0Q6Rv41cDr"
+    },
+    {
+      "Insight ID": 11,
+      "Value Type": "Social Klout",
+      "Value": "x% TBD",
+      "ref": "recCL8UHQ1LRk9Cv3"
+    },
+    {
+      "Insight ID": 12,
+      "Value Type": "Fandom",
+      "Value": "x% TBD",
+      "ref": "recdUoX50J65LaysE"
+    }
+  ],
+  "Products": [
+    {
+      "Product ID": 1,
+      "Product Name": "Hotel Upsell",
+      "Brand Category": ["Travel", "Financial Services"],
+      "Product Description": "Accommodations included with ticket package ",
+      "Brand Objective": ["Brand Loyalty"],
+      "Venue": ["Festivals"],
+      "Fan Journey Linkage": ["recZBIhUMGYhrkCJG"],
+      "ref": "recHyZrZaF4riScze"
+    },
+    {
+      "Product ID": 2,
+      "Product Name": "In-Seat Ordering",
+      "Brand Category": ["Alcohol", "CPG - Food and Beverages"],
+      "Product Description": "Order food and beverage items via the LN app\n",
+      "Brand Objective": ["Perception"],
+      "Venue": ["Amphitheater"],
+      "Product Category": ["Food & Beverage", "Convenience"],
+      "ref": "recucGnr5jF0DUHEi"
+    },
+    {
+      "Product ID": 3,
+      "Product Name": "Mobile Festival App Presenting Sponsor",
+      "Brand Category": ["Financial Services", "Technology & Mobile"],
+      "Product Description": "NIT sponsorship for app",
+      "Brand Objective": ["Awareness"],
+      "Venue": ["Festivals"],
+      "ref": "recjUxsKPxBka1qkx"
+    },
+    {
+      "Product ID": 4,
+      "Product Name": "In-App Interactive Games",
+      "Brand Category": ["Financial Services", "Autos", "Technology & Mobile"],
+      "Product Description": "Gamefied survey fan experience to garner engaged brand perception and feedback",
+      "Brand Objective": ["Perception"],
+      "Venue": ["Festivals", "Amphitheater"],
+      "Product Category": ["On-Site Engagement"],
+      "ref": "recvf1kDk92B0ufEc"
+    },
+    {
+      "Product ID": 5,
+      "Product Name": "Photo Booth",
+      "Brand Category": ["Travel"],
+      "Product Description": "A branded onsite photo booth for brand exposure and social media amplification\n",
+      "Brand Objective": ["Perception", "Awareness"],
+      "Venue": ["Festivals", "Amphitheater"],
+      "Fan Journey Linkage": ["recU3USmyD7YGlCck"],
+      "ref": "recnb7KnGMNpRYLXa"
+    },
+    {
+      "Product ID": 6,
+      "Product Name": "Branded Viewing Area",
+      "Brand Category": ["Financial Services", "Alcohol"],
+      "Product Description": "A branded viewing area for brand exposure, social amplification and enhancing brand loyalty\n",
+      "Brand Objective": ["Brand Loyalty", "Awareness"],
+      "Venue": ["Festivals", "Amphitheater"],
+      "Product Category": ["On-Site Viewing Experience"],
+      "ref": "rec0PKZpMQ6u8pFaN"
+    },
+    {
+      "Product ID": 7,
+      "Product Name": "My Festival Journey",
+      "Brand Category": ["Travel"],
+      "Product Description": "App to help fans relive the festival by creating a playlist based on the artists at the festival",
+      "Brand Objective": ["Perception", "Purchase Intent"],
+      "Venue": ["Festivals"],
+      "Fan Journey Linkage": ["recU3USmyD7YGlCck"],
+      "ref": "recP9dbNcMHt77lXZ"
+    }
+  ],
+  "Fan Journey": [
+    {
+      "ref": "recXvn16xto1oKQPK",
+      "Node ID": 1,
+      "Fan Journey": "Discover",
+      "Node Hierarchy": 1,
+      "Node Name": "Discover",
+      "Venue Multi-Select": ["Festivals", "Amphitheater"],
+      "Parent Node ID": "root"
+    },
+    {
+      "ref": "recZBIhUMGYhrkCJG",
+      "Node ID": 2,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 1,
+      "Node Name": "Plan",
+      "Product Linkage": ["recHyZrZaF4riScze"],
+      "Venue Multi-Select": ["Festivals", "Amphitheater"],
+      "Parent Node ID": "root"
+    },
+    {
+      "ref": "recqzVk7nnirVUS10",
+      "Node ID": 3,
+      "Fan Journey": "Live",
+      "Node Hierarchy": 1,
+      "Node Name": "Live",
+      "Venue Multi-Select": ["Festivals", "Amphitheater"],
+      "Parent Node ID": "root"
+    },
+    {
+      "ref": "recU3USmyD7YGlCck",
+      "Node ID": 4,
+      "Fan Journey": "Relive",
+      "Node Hierarchy": 1,
+      "Node Name": "Relive",
+      "Product Linkage": ["recP9dbNcMHt77lXZ", "recnb7KnGMNpRYLXa"],
+      "Venue Multi-Select": ["Festivals", "Amphitheater"],
+      "Parent Node ID": "root"
+    },
+    {
+      "ref": "rec1mCv9SYdNE7qkH",
+      "Node ID": 5,
+      "Fan Journey": "Discover",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recXvn16xto1oKQPK",
+      "Node Name": "Music Discovery",
+      "Venue Multi-Select": ["Festivals", "Amphitheater"]
+    },
+    {
+      "ref": "recAFmKrJILGRaWPc",
+      "Node ID": 6,
+      "Fan Journey": "Discover",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recXvn16xto1oKQPK",
+      "Node Name": "Event Discovery",
+      "Venue Multi-Select": ["Festivals", "Amphitheater"]
+    },
+    {
+      "ref": "recmBCZFGRmhWT8qG",
+      "Node ID": 41,
+      "Fan Journey": "Discover",
+      "Node Hierarchy": 2,
+      "Node Name": "Livestream Discovery",
+      "Venue Multi-Select": ["Festivals", "Amphitheater"],
+      "Parent Node ID": "root"
+    },
+    {
+      "ref": "rec4B1hcdzEeuOxnX",
+      "Node ID": 7,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recZBIhUMGYhrkCJG",
+      "Node Name": "Decide To Attend",
+      "Venue Multi-Select": ["Festivals", "Amphitheater"]
+    },
+    {
+      "ref": "recjRwYOBrYZPn4Iq",
+      "Node ID": 8,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recZBIhUMGYhrkCJG",
+      "Node Name": "Plan to Purchase Tickets"
+    },
+    {
+      "ref": "recnQd4iM5UcCEa9J",
+      "Node ID": 9,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 3,
+      "Parent Node ID": "recjRwYOBrYZPn4Iq",
+      "Node Name": "Budget to Buy Tickets"
+    },
+    {
+      "ref": "recyp4dTL5kQoTRIr",
+      "Node ID": 10,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recZBIhUMGYhrkCJG",
+      "Node Name": "Purchase Tickets",
+      "Insight Linkage": [
+        "recuyCZiv74tZJoRq",
+        "recfWPHwyMIOlxkj9",
+        "recyv14K5JPLwPdFS",
+        "recRfttZagEB233yI",
+        "recJWOZQKq1lbrxMh",
+        "recWSfvqeSduCNNwU",
+        "recrXYjEWwbOQd0Zm"
+      ]
+    },
+    {
+      "ref": "recSHAWWgzNrEr6lr",
+      "Node ID": 11,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 3,
+      "Parent Node ID": "recyp4dTL5kQoTRIr",
+      "Node Name": "Budget for Event Expenses"
+    },
+    {
+      "ref": "rec2suunpGA6goclJ",
+      "Node ID": 12,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recZBIhUMGYhrkCJG",
+      "Node Name": "Logistics"
+    },
+    {
+      "ref": "recnybmXOyTh5qRgP",
+      "Node ID": 13,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 3,
+      "Parent Node ID": "rec2suunpGA6goclJ",
+      "Node Name": "Logistics Budgeting",
+      "Insight Linkage": ["recSpmJmlpaQGbbcq"]
+    },
+    {
+      "ref": "recKovFsHBkJbfgU4",
+      "Node ID": 14,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 4,
+      "Parent Node ID": "recnybmXOyTh5qRgP",
+      "Node Name": "Months Out"
+    },
+    {
+      "ref": "recWArqudMJWn13IZ",
+      "Node ID": 15,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 4,
+      "Parent Node ID": "recnybmXOyTh5qRgP",
+      "Node Name": "Weeks Out"
+    },
+    {
+      "ref": "recaiSSg48vp3Fxpv",
+      "Node ID": 16,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 4,
+      "Parent Node ID": "recnybmXOyTh5qRgP",
+      "Node Name": "Day Of"
+    },
+    {
+      "ref": "recYL0Mb4ZeZNJqou",
+      "Node ID": 17,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 3,
+      "Parent Node ID": "rec2suunpGA6goclJ",
+      "Node Name": "Logistics Purchasing"
+    },
+    {
+      "ref": "recUVGu80xWK7gIG3",
+      "Node ID": 18,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 4,
+      "Parent Node ID": "recYL0Mb4ZeZNJqou",
+      "Node Name": "Months Out"
+    },
+    {
+      "ref": "recuUrQWRCwplye2i",
+      "Node ID": 19,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 4,
+      "Parent Node ID": "recYL0Mb4ZeZNJqou",
+      "Node Name": "Weeks Out"
+    },
+    {
+      "ref": "rec5lWXpmEPkgdaZb",
+      "Node ID": 20,
+      "Fan Journey": "Live",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recqzVk7nnirVUS10",
+      "Node Name": "Pre-Event Offsite"
+    },
+    {
+      "ref": "rec2TsAV4CMpuDQmI",
+      "Node ID": 42,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 3,
+      "Parent Node ID": "rec2suunpGA6goclJ",
+      "Node Name": "Shop"
+    },
+    {
+      "ref": "recPUNhs054bhNXad",
+      "Node ID": 21,
+      "Fan Journey": "Plan",
+      "Node Hierarchy": 3,
+      "Parent Node ID": "rec2suunpGA6goclJ",
+      "Node Name": "Packing & Prep"
+    },
+    {
+      "ref": "recIl28b3cOZjWi8M",
+      "Node ID": 22,
+      "Fan Journey": "Live",
+      "Node Hierarchy": 3,
+      "Parent Node ID": "rec5lWXpmEPkgdaZb",
+      "Node Name": "Travel to Event"
+    },
+    {
+      "ref": "recGuja5fu7Ec09Lx",
+      "Node ID": 23,
+      "Fan Journey": "Live",
+      "Node Hierarchy": 3,
+      "Parent Node ID": "rec5lWXpmEPkgdaZb",
+      "Node Name": "Offsite Activities"
+    },
+    {
+      "ref": "recpD9pTtoTKZ5Tg1",
+      "Node ID": 24,
+      "Fan Journey": "Live",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recqzVk7nnirVUS10",
+      "Node Name": "Arrival & Pre-Show Activities"
+    },
+    {
+      "ref": "rec2aUZl5CbVS2mWi",
+      "Node ID": 25,
+      "Fan Journey": "Live",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recqzVk7nnirVUS10",
+      "Node Name": "Performances"
+    },
+    {
+      "ref": "recUWvGyPXsGNfveG",
+      "Node ID": 26,
+      "Fan Journey": "Live",
+      "Node Hierarchy": 3,
+      "Parent Node ID": "rec2aUZl5CbVS2mWi",
+      "Node Name": "Social Shares"
+    },
+    {
+      "ref": "recdGqm4nHp1PWism",
+      "Node ID": 27,
+      "Fan Journey": "Live",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recqzVk7nnirVUS10",
+      "Node Name": "Beyond the Music"
+    },
+    {
+      "ref": "recrsl6q7XDKwecQo",
+      "Node ID": 28,
+      "Fan Journey": "Live",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recqzVk7nnirVUS10",
+      "Node Name": "Leaving"
+    },
+    {
+      "ref": "recJ7Sz5sulSc6f6T",
+      "Node ID": 29,
+      "Fan Journey": "Live",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recqzVk7nnirVUS10",
+      "Node Name": "Post-Event Offsite"
+    },
+    {
+      "ref": "recuhuWrjfptHpHGw",
+      "Node ID": 30,
+      "Fan Journey": "Live",
+      "Node Hierarchy": 3,
+      "Parent Node ID": "recJ7Sz5sulSc6f6T",
+      "Node Name": "Travel Post-Event"
+    },
+    {
+      "ref": "recFiS6nGXdSHZNea",
+      "Node ID": 31,
+      "Fan Journey": "Live",
+      "Node Hierarchy": 3,
+      "Parent Node ID": "recJ7Sz5sulSc6f6T",
+      "Node Name": "After-Hours Activities"
+    },
+    {
+      "ref": "recHPcTfUc3uA6s4z",
+      "Node ID": 32,
+      "Fan Journey": "Relive",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recU3USmyD7YGlCck",
+      "Node Name": "Social Shares & Consumption"
+    },
+    {
+      "ref": "recAYvql5fhURtiSZ",
+      "Node ID": 33,
+      "Fan Journey": "Relive",
+      "Node Hierarchy": 3,
+      "Parent Node ID": "recHPcTfUc3uA6s4z",
+      "Node Name": "48 hrs Post-Event"
+    },
+    {
+      "ref": "recIu22dlv0ay8zbI",
+      "Node ID": 34,
+      "Fan Journey": "Relive",
+      "Node Hierarchy": 3,
+      "Parent Node ID": "recHPcTfUc3uA6s4z",
+      "Node Name": "Forever Post-Event"
+    },
+    {
+      "ref": "recPjLuGjGgtH5C45",
+      "Node ID": 35,
+      "Fan Journey": "Relive",
+      "Node Hierarchy": 2,
+      "Parent Node ID": "recU3USmyD7YGlCck",
+      "Node Name": "Physical Manifestations"
+    },
+    {
+      "ref": "rec0hjMuxIqCpGvmI",
+      "Node ID": 36,
+      "Node Hierarchy": 1,
+      "Parent Node ID": "root"
+    },
+    {
+      "ref": "recpmJTKEEcjN0HwF",
+      "Node ID": 37,
+      "Node Hierarchy": 1,
+      "Parent Node ID": "root"
+    },
+    {
+      "ref": "recJyg6aL7yFthdgi",
+      "Node ID": 38,
+      "Node Hierarchy": 4,
+      "Parent Node ID": "root"
+    },
+    {
+      "ref": "recSlcFboyFc2ARGo",
+      "Node ID": 40,
+      "Node Hierarchy": 2,
+      "Parent Node ID": "root"
+    }
+  ]
+}

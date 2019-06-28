@@ -133,6 +133,7 @@ export default class Particles {
     );
 
     this.object3D = new THREE.Mesh(geometry, material);
+    this.object3D.name = "mesh" + Math.random();
     this.container.add(this.object3D);
   }
 
@@ -192,7 +193,6 @@ export default class Particles {
   }
 
   show(time = 1.0) {
-    console.log("this.object3D", this.object3D);
     // reset
     // TweenLite.fromTo(
     //   this.object3D.material.uniforms.uSize,
@@ -213,7 +213,7 @@ export default class Particles {
     TweenLite.fromTo(
       this.object3D.material.uniforms.uDepth,
       time * 2,
-      { value: 100.0 },
+      { value: 500.0 },
       { value: 1.0, ease: Quad.easeIn }
     );
 
@@ -222,40 +222,42 @@ export default class Particles {
 
   hide(_destroy, time = 1.0) {
     return new Promise((resolve, reject) => {
-      TweenLite.to(this.object3D.material.uniforms.uRandom, time * 0.7, {
+      const that = this.object3D; // keep track of previous mesh to destroy it after delay
+      // TweenLite.to(this.object3D.material.uniforms.uRandom, time * 0.7, {
+      TweenLite.to(that.material.uniforms.uRandom, time * 0.2, {
         value: 1.0,
       });
-      TweenLite.to(this.object3D.material.uniforms.uDepth, time, {
-        // value: -20.0,
-        value: 100.0,
-        ease: Quad.easeIn,
+      TweenLite.to(that.material.uniforms.uDepth, time * 2, {
+        value: 500.0,
+        ease: Quad.easeInOut,
+      });
+      TweenLite.to(that.material.uniforms.uSize, time * 2, {
+        value: 0,
         onComplete: () => {
           if (_destroy) this.destroy();
           resolve();
         },
       });
-      // TweenLite.to(this.object3D.material.uniforms.uSize, time * 2, {
-      //   value: 0.5,
-      // });
 
       this.removeListeners();
     });
   }
 
-  destroy() {
-    if (!this.object3D) return;
+  destroy(that = this.object3D) {
+    if (!that) return;
 
-    this.object3D.parent.remove(this.object3D);
-    this.object3D.geometry.dispose();
-    this.object3D.material.dispose();
-    this.object3D = null;
+    console.log("in destroy: that", that.name);
+    that.parent.remove(that);
+    that.geometry.dispose();
+    that.material.dispose();
+    that = null;
 
-    if (!this.hitArea) return;
+    // if (!this.hitArea) return;
 
-    this.hitArea.parent.remove(this.hitArea);
-    this.hitArea.geometry.dispose();
-    this.hitArea.material.dispose();
-    this.hitArea = null;
+    // this.hitArea.parent.remove(this.hitArea);
+    // this.hitArea.geometry.dispose();
+    // this.hitArea.material.dispose();
+    // this.hitArea = null;
   }
 
   // ---------------------------------------------------------------------------------------------

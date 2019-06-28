@@ -11,32 +11,10 @@ export default class WebGLView {
     this.app = app;
 
     this.samples = [
-      // "images/pixel-pic-1.png",
-      // "images/pixel-pic-2.png",
-      // "images/pixel-pic-3.png",
-      // "images/pixel-pic-4.png",
-      // "images/pixel-pic-5.png",
-      // "images/Start crowd edit-12258.png",
       "images/pixel-pic-3.jpg",
       "images/pixel-pic-2.jpg",
       "images/pixel-pic-5.jpg",
       "images/pixel-pic-6.jpg",
-      // "images/Listening Edit-12498.png",
-      // "images/discover_1-8983@0,5x.png",
-      // "images/live-woman.png",
-      // "images/circles.png",
-      // "images/plan-pic-col.png",
-      // "images/plan-pic-bw.png",
-      // "images/black-and-white.png",
-      // "images/pixel-color.png",
-      // "images/duplex-grid.png",
-      // "images/duplex.png",
-      // "images/plan-type-1.png",
-      // "images/plan-type-2.png",
-      // "images/plan-type-3.png",
-      // "images/plan-type-4.png",
-      // "images/plan-type-5.png",
-      // "images/relive_1-9007.png",
     ];
 
     this.initThree();
@@ -102,6 +80,7 @@ export default class WebGLView {
       this.particles.hide(true).then(() => {
         // new Particles[new image]
         // this.particles =
+        console.log("this.particles", this.particles);
         this.particles.init(this.samples[index]);
       });
     }

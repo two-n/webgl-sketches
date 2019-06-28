@@ -3,6 +3,7 @@
 precision highp float;
 
 uniform sampler2D uTexture;
+uniform float uRandom;
 
 varying vec2 vPUv;
 varying vec2 vUv;
@@ -30,8 +31,11 @@ void main() {
 	// final color
 	color = colB;
 
-	color.a = t; // makes them round pixels
+	// color.a = t; // makes them round pixels
+	// float shape = uRandom > 0.2 ?  1.0 : t;
 	// color.a = 1.0; // to make them squares
+	float clamped = clamp(uRandom, t,1.0);
+	color.a = clamped; // transition between round and squares
 
 	gl_FragColor = color;
 }

@@ -136,7 +136,7 @@ function init() {
   container.appendChild(renderer.domElement);
 
   stats = new Stats();
-  container.appendChild(stats.dom);
+  // container.appendChild(stats.dom);
 
   document.addEventListener("mousemove", onDocumentMouseMove, false);
 
@@ -166,14 +166,17 @@ function onKeyPress(e) {
 }
 
 function destroyHTML() {
-  document.querySelector(".ui-nodes").children.forEach(e => {
+  document.querySelectorAll(".ui-nodes div").forEach(e => {
     document.querySelector(".ui-nodes").removeChild(e);
   });
 }
 
 function drawHTMLEls() {
+  if (document.querySelector(".ui-nodes").children.length) {
+    destroyHTML();
+  }
   const { canvas } = renderer.context;
-  var positions = particles.geometry.attributes.position.array;
+  const positions = particles.geometry.attributes.position.array;
   camera.updateProjectionMatrix();
 
   selectionArray.forEach(e => {
@@ -212,6 +215,8 @@ function onWindowResize() {
   camera.updateProjectionMatrix();
 
   renderer.setSize(window.innerWidth, window.innerHeight);
+
+  drawHTMLEls();
 }
 
 function onDocumentMouseMove(event) {

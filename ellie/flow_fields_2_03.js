@@ -4,19 +4,19 @@ const canvas = document.getElementById("canvas"),
   width = (canvas.width = window.innerWidth),
   height = (canvas.height = window.innerHeight - topMargin),
   opacityAlpha = 0.0075,
-  numPoints = 1000,
+  numPoints = 800,
   circleRadius = 20,
   numCircles = 4,
-  TopBorderRadius = height / 4,
+  TopBorderRadius = topMargin,
   SideBorderRadius = width / 10,
   bufferRadius = 30,
   center = [width / 2, height / 2],
   friction = 0.99,
-  speed = 0.05;
+  speed = 0.025;
 
 context.translate(0, topMargin);
 context.lineWidth = 0.1;
-const start = Date.now();
+let start;
 let z = 0;
 let res = 10;
 
@@ -25,41 +25,63 @@ const scale = d3
   .scaleLinear()
   .domain([0, numCircles])
   .range([SideBorderRadius, width - SideBorderRadius]);
-const circles = [];
+let circles = [];
 for (let i = 0; i < numCircles; i++) {
   circles[i] = [scale(i + 1), midHeight];
 }
 
 // create points.
-const points = [];
-const startingPositions = [
-  [0, height / 2],
-  [width / 2, 0],
-  [width / 2, height],
-  [width, height / 2],
-];
-for (let y = 0; y < numPoints; y += 1) {
-  let start =
-    startingPositions[Math.floor(Math.random() * startingPositions.length)];
-  points.push({
-    x: SideBorderRadius,
-    y: height / 2,
-    vx: Math.random(),
-    vy: Math.random(),
-  });
+let points = [];
+// for (let y = 0; y < numPoints; y += 1) {
+//   points.push({
+//     x: SideBorderRadius,
+//     y: height / 2,
+//     vx: Math.random(),
+//     vy: Math.random(),
+//   });
+// }
+
+// noise.seed(Math.random());
+// drawFlowField();
+// // drawCircles();
+// drawText("(enter)", SideBorderRadius);
+// drawText("DISCOVER", circles[0][0]);
+// drawText("PLAN", circles[1][0]);
+// drawText("LIVE", circles[2][0]);
+// drawText("RELIVE", circles[3][0]);
+
+function mount() {
+  // create points.
+  points = [];
+  for (let y = 0; y < numPoints; y += 1) {
+    points.push({
+      x: SideBorderRadius,
+      y: height / 2,
+      vx: Math.random(),
+      vy: Math.random(),
+    });
+  }
+
+  noise.seed(Math.random());
+  // drawFlowField();
+  // drawCircles();
+  // drawText("(enter)", SideBorderRadius);
+  // drawText("DISCOVER", circles[0][0]);
+  // drawText("PLAN", circles[1][0]);
+  // drawText("LIVE", circles[2][0]);
+  // drawText("RELIVE", circles[3][0]);
 }
 
-noise.seed(Math.random());
-drawFlowField();
-// drawCircles();
-drawText("(enter)", SideBorderRadius);
-drawText("DISCOVER", circles[0][0]);
-drawText("PLAN", circles[1][0]);
-drawText("LIVE", circles[2][0]);
-drawText("RELIVE", circles[3][0]);
+mount();
 
 // render();
-canvas.addEventListener("click", () => render());
+canvas.addEventListener("click", () => {
+  cancelAnimationFrame(render);
+  context.clearRect(0, 0, width, height);
+  start = Date.now();
+  mount();
+  render();
+});
 
 function drawCircles() {
   for (let i = 0; i < circles.length; i++) {
@@ -87,6 +109,26 @@ function drawText(text, xPos) {
   context.fillStyle = "red";
   context.fillText(text, xPos, midHeight);
 }
+
+const labels = ["(start)", "DISCOVER", "PLAN", "LIVE", "RELIVE"];
+const labelPositions = [[SideBorderRadius, midHeight], ...circles];
+
+d3.select("div#text")
+  .selectAll(".phaseLabel")
+  .data(labels)
+  .enter()
+  .append("div")
+  .attr(
+    "style",
+    (_, i) => `
+    width: ${width / labels.length}px;
+      transform: translate(${labelPositions[i][0]}px, ${midHeight +
+      topMargin -
+      15}px)`
+  )
+  .append("span")
+  .attr("class", "label")
+  .text(d => d);
 
 function drawFlowField() {
   for (var x = 0; x < width; x += res) {
@@ -134,6 +176,9 @@ function drawLines() {
     if (p.x < 0) p.x = width;
     if (p.y < 0) p.y = height;
   }
+
+  // console.log("max vx:", Math.max(...points.map(d => d.vx)));
+  // console.log("max vy:", Math.max(...points.map(d => d.vy)));
 }
 
 function render() {
@@ -179,9 +224,9 @@ function leftSide(x, y) {
 
 function getValue(x, y) {
   var scale = 0.003;
-  if (outsideBorder(x, y))
-    // return Math.atan2(y - center[1], x - center[0]) + (9 * Math.PI) / 10;
-    return noise.perlin2(x * scale, y * scale) * Math.PI * 2;
+  // if (outsideBorder(x, y))
+  // return Math.atan2(y - center[1], x - center[0]) + (9 * Math.PI) / 10;
+  // return noise.perlin2(x * scale, y * scale) * Math.PI * 2;
 
   if (leftSide(x, y)) {
     return Math.PI * 2;
@@ -189,7 +234,7 @@ function getValue(x, y) {
 
   let results = inCircles(x, y);
   return results
-    ? Math.atan2(y - results[1], x - results[0]) + (1 * Math.PI) / 5
+    ? Math.atan2(y - results[1], x - results[0]) + (3 * Math.PI) / 3
     : // : noise.perlin3(x * scale, y * scale, z) * Math.PI * 2;
       noise.perlin2(x * scale, y * scale) * Math.PI;
   // Math.atan2(y - midHeight, x - (width - SideBorderRadius)) *

@@ -9,7 +9,31 @@
         padding: 0;
       }
       canvas {
+        /* display: block; */
+        position: absolute;
+      }
+      div#text {
+        z-index: 1;
+        position: absolute;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
         display: block;
+      }
+      div.label {
+        position: absolute;
+        display: block;
+        height: fit-content;
+      }
+      span.label {
+        position: absolute;
+        margin: auto;
+        /* height: fit-content; */
+        color: red;
+        font-family: "Gilroy";
+        font-size: 30px;
+        text-anchor: end;
+        vertical-align: baseline;
       }
     </style>
     <script type="text/javascript" src="perlin.js"></script>
@@ -20,7 +44,9 @@
     ></script>
   </head>
   <body>
+    <div id="text"></div>
     <canvas id="canvas"></canvas>
+    <script src="https://d3js.org/d3-selection.v1.min.js"></script>
     <script src="https://d3js.org/d3-array.v2.min.js"></script>
     <script src="https://d3js.org/d3-color.v1.min.js"></script>
     <script src="https://d3js.org/d3-format.v1.min.js"></script>

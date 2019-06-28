@@ -1,0 +1,140 @@
+import "three";
+import { TweenLite } from "gsap/TweenMax";
+
+import InteractiveControls from "./controls/InteractiveControls";
+import Particles from "./particles/Particles";
+
+const glslify = require("glslify");
+
+export default class WebGLView {
+  constructor(app) {
+    this.app = app;
+
+    this.samples = [
+      // "images/pixel-pic-1.png",
+      // "images/pixel-pic-2.png",
+      // "images/pixel-pic-3.png",
+      // "images/pixel-pic-4.png",
+      // "images/pixel-pic-5.png",
+      // "images/Start crowd edit-12258.png",
+      "images/pixel-pic-3.jpg",
+      "images/pixel-pic-2.jpg",
+      "images/pixel-pic-5.jpg",
+      "images/pixel-pic-6.jpg",
+      // "images/Listening Edit-12498.png",
+      // "images/discover_1-8983@0,5x.png",
+      // "images/live-woman.png",
+      // "images/circles.png",
+      // "images/plan-pic-col.png",
+      // "images/plan-pic-bw.png",
+      // "images/black-and-white.png",
+      // "images/pixel-color.png",
+      // "images/duplex-grid.png",
+      // "images/duplex.png",
+      // "images/plan-type-1.png",
+      // "images/plan-type-2.png",
+      // "images/plan-type-3.png",
+      // "images/plan-type-4.png",
+      // "images/plan-type-5.png",
+      // "images/relive_1-9007.png",
+    ];
+
+    this.initThree();
+    this.initParticles();
+    this.initControls();
+
+    // const rnd = ~~(Math.random() * this.samples.length);
+    const rnd = 0;
+    this.goto(rnd);
+  }
+
+  initThree() {
+    // scene
+    this.scene = new THREE.Scene();
+
+    // camera
+    this.camera = new THREE.PerspectiveCamera(
+      50,
+      window.innerWidth / window.innerHeight,
+      1,
+      10000
+    );
+    this.camera.position.z = 300;
+
+    // renderer
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+
+    // clock
+    this.clock = new THREE.Clock(true);
+  }
+
+  initControls() {
+    this.interactive = new InteractiveControls(
+      this.camera,
+      this.renderer.domElement
+    );
+  }
+
+  initParticles() {
+    this.particles = new Particles(this);
+    this.scene.add(this.particles.container);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // PUBLIC
+  // ---------------------------------------------------------------------------------------------
+
+  update() {
+    const delta = this.clock.getDelta();
+
+    if (this.particles) this.particles.update(delta);
+  }
+
+  draw() {
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  goto(index) {
+    // init next
+    if (this.currSample == null) this.particles.init(this.samples[index]);
+    // hide curr then init next
+    else {
+      this.particles.hide(true).then(() => {
+        // new Particles[new image]
+        // this.particles =
+        this.particles.init(this.samples[index]);
+      });
+    }
+
+    this.currSample = index;
+  }
+
+  next() {
+    if (this.currSample < this.samples.length - 1)
+      this.goto(this.currSample + 1);
+    else this.goto(0);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // EVENT HANDLERS
+  // ---------------------------------------------------------------------------------------------
+
+  resize() {
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+
+    if (!this.renderer) return;
+    this.camera.aspect = this.width / this.height;
+    this.camera.updateProjectionMatrix();
+
+    this.fovHeight =
+      2 *
+      Math.tan((this.camera.fov * Math.PI) / 180 / 2) *
+      this.camera.position.z;
+
+    this.renderer.setSize(this.width, this.height);
+
+    if (this.interactive) this.interactive.resize();
+    if (this.particles) this.particles.resize();
+  }
+}

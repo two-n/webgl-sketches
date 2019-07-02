@@ -30,14 +30,14 @@ var selectionArray = [
   "35,10",
   "41,5",
   "45,14",
-  "28,6",
-  "36,1",
-  "34,14",
-  "32,12",
-  "44,18",
-  "48,12",
-  "45,5",
-  "40,7",
+  // "28,6",
+  // "36,1",
+  // "34,14",
+  // "32,12",
+  // "44,18",
+  // "48,12",
+  // "45,5",
+  // "40,7",
 ];
 var selectionTree = d3
   .stratify()
@@ -76,7 +76,7 @@ var windowHalfY = window.innerHeight / 2;
 var tree = data =>
   d3
     .tree()
-    .size([Math.PI, window.innerHeight * 2])
+    .size([Math.PI, window.innerHeight / 3])
     .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth)(
     d3.hierarchy(data)
   );
@@ -103,8 +103,10 @@ function init() {
     1,
     10000
   );
-  camera.position.x = 2500;
-  camera.position.y = 500;
+  // camera.position.x = 2500;
+  // camera.position.y = 500;
+  camera.position.x = 0;
+  camera.position.y = 0;
   camera.position.z = -2500;
 
   scene = new THREE.Scene();
@@ -147,6 +149,7 @@ function init() {
     fragmentShader: FRAG,
   });
 
+  // red material
   material2 = material.clone();
   material2.uniforms = {
     color: { value: new THREE.Color(0xff0000) },
@@ -206,45 +209,80 @@ function init() {
   stats = new Stats();
   // container.appendChild(stats.dom);
 
-  tree(selectionTree)
-    .descendants()
-    .reverse()
-    .forEach(d => {
-      const theta = d.x;
-      const x = Math.cos(theta + Math.PI / 2) * d.y;
-      const y = Math.sin(theta + Math.PI / 2) * d.y;
-      const screenVector = new THREE.Vector3(x, y, -1);
-      console.log("screen", screenVector);
-      const worldVector = screenVector.unproject(camera);
-      console.log("world", worldVector);
-      radialTree.set(d.data.id, worldVector);
+  const testData = [
+    { id: "31,2", x: 0 + 5, y: 0 + 5 },
+    { id: "35,10", x: window.innerWidth - 5, y: 0 + 5 },
+    { id: "41,5", x: 0 + 5, y: window.innerHeight - 5 },
+    { id: "45,14", x: window.innerWidth - 5, y: window.innerHeight - 5 },
+  ];
+  camera.updateProjectionMatrix();
+  // tree(selectionTree)
+  //   .descendants()
+  //   .reverse()
+  testData.forEach(d => {
+    // const theta = d.x;
+    // const x = windowHalfX + Math.cos(theta + Math.PI / 2) * d.y;
+    // const y = windowHalfY + Math.sin(theta + Math.PI / 2) * d.y;
+
+    // ref: https://stackoverflow.com/a/13091694
+    // const normX = (x / window.innerWidth) * 2 - 1;
+    // const normY = (y / window.innerHeight) * 2 - 1;
+    // const normX = (d.x / window.innerWidth) * 2 - 1;
+    // const normY = (1 - d.y / window.innerHeight) * 2 - 1;
+    // const yScale = d3
+    //   .scaleLinear()
+    //   .domain([0, window.innerHeight])
+    //   .range([]);
+
+    const normX = window.innerWidth - d.x - window.innerWidth / 2;
+    // const normY = d.y - window.innerHeight / 2;
+    const normY = window.innerHeight - d.y - window.innerHeight / 2;
+    // const screenVector = new THREE.Vector3(d.x, d.y, 0);
+    const screenVector = new THREE.Vector3(normX, normY, 0.5);
+    console.log("cords", d.x, d.y);
+    console.log("normX, normY", normX, normY);
+
+    // const worldVector = screenVector.unproject(camera);
+    screenVector.unproject(camera); // returns normalized values!
+    console.log("screenVector", screenVector);
+    const aspectRatio =
+      renderer.context.canvas.width / renderer.context.canvas.height;
+    const worldVector = new THREE.Vector3(
+      // screenVector.x * renderer.context.canvas.width,
+      screenVector.x / aspectRatio,
+      // screenVector.y * renderer.context.canvas.height,
+      screenVector.y,
+      screenVector.z //* camera.position.z
+      // screenVector.x * renderer.context.canvas.width - 2500
+    );
+    console.log("worldVector", worldVector);
+
+    radialTree.set(d.id, worldVector);
+  });
+  const node = d3
+    .select("svg.tree")
+    .attr("height", window.innerHeight)
+    .attr("width", window.innerWidth)
+    .append("g")
+    .selectAll("g")
+    .data(
+      testData
+      // tree(selectionTree)
+      //   .descendants()
+      //   .reverse()
+    )
+    .join("g")
+    .attr("transform", d => {
+      // const theta = d.x;
+      // const x = Math.cos(theta - Math.PI / 2) * d.y;
+      // const y = Math.sin(theta - Math.PI / 2) * d.y;
+      // return `translate(${windowHalfX + x},${windowHalfY + y})`;
+      return `translate(${d.x},${d.y})`;
     });
-  // const node = d3
-  //   .select("svg.tree")
-  //   .attr("height", window.innerHeight)
-  //   .attr("width", window.innerWidth)
-  //   .append("g")
-  //   .attr(
-  //     "transform",
-  //     `translate(${window.innerWidth / 2}, ${window.innerHeight / 2})`
-  //   )
-  //   .selectAll("g")
-  //   .data(
-  //     tree(selectionTree)
-  //       .descendants()
-  //       .reverse()
-  //   )
-  //   .join("g")
-  //   .attr("transform", d => {
-  //     const theta = d.x;
-  //     const x = Math.cos(theta - Math.PI / 2) * d.y;
-  //     const y = Math.sin(theta - Math.PI / 2) * d.y;
-  //     return `translate(${x},${y})`;
-  //   });
-  // node
-  //   .append("circle")
-  //   .attr("r", 5)
-  //   .attr("fill", "white");
+  node
+    .append("circle")
+    .attr("r", 5)
+    .attr("fill", "white");
 
   document.addEventListener("mousemove", onDocumentMouseMove, false);
 
@@ -265,11 +303,11 @@ function onKeyPress(e) {
   if (e.keyCode === 32) {
     transitionStart = count;
     view = (view + 1) % 3;
-    // if (view === 2) {
-    //   setTimeout(() => drawHTMLEls(), 5000);
-    // } else if (document.querySelector(".ui-nodes").children.length) {
-    //   destroyHTML();
-    // }
+    if (view === 2) {
+      setTimeout(() => drawHTMLEls(), 5000);
+    } else if (document.querySelector(".ui-nodes").children.length) {
+      destroyHTML();
+    }
   }
 }
 
@@ -289,17 +327,20 @@ function drawHTMLEls() {
 
   selectionArray.forEach(e => {
     const i = +e.split(",")[0] * AMOUNTX + +e.split(",")[1];
+
     const screen = new THREE.Vector3(
       positions[i * 3],
       positions[i * 3 + 1],
       positions[i * 3 + 2]
     ).project(camera);
+
     const x = Math.round(
       (0.5 + screen.x / 2) * (canvas.width / window.devicePixelRatio)
     );
     const y = Math.round(
       (0.5 - screen.y / 2) * (canvas.height / window.devicePixelRatio)
     );
+
     const child = document
       .querySelector(".ui-nodes")
       .appendChild(document.createElement("div"));
@@ -344,8 +385,8 @@ function zpos(y) {
 }
 
 function ypos(x, y, c) {
-  // return 100;
-  return Math.sin((x + c) * 0.3) * 50 + Math.sin((y + c) * 0.5) * 50;
+  return 100;
+  // return Math.sin((x + c) * 0.3) * 50 + Math.sin((y + c) * 0.5) * 50;
 }
 //
 
@@ -394,10 +435,10 @@ function render() {
         positions[i + 1] = inGroup ? interpolate(v2y, y, t) : y;
         positions[i + 2] = inGroup ? interpolate(v2z, z, t) : z;
 
-        // scales[j] = 32;
-        scales[j] =
-          (Math.sin((ix + count) * 0.3) + 1) * 8 +
-          (Math.sin((iy + count) * 0.5) + 1) * 8;
+        scales[j] = 32;
+        // scales[j] =
+        //   (Math.sin((ix + count) * 0.3) + 1) * 8 +
+        //   (Math.sin((iy + count) * 0.5) + 1) * 8;
 
         // VIEW 1
       } else if (view === 1) {

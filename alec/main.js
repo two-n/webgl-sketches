@@ -60,7 +60,7 @@ var selectionTree = d3
 var selection = new Set(selectionArray);
 
 var container, stats;
-var camera, scene, renderer, raycaster;
+var camera, scene, renderer, raycaster, controls;
 var material, material2;
 
 var particles,
@@ -103,11 +103,11 @@ function init() {
     1,
     10000
   );
-  // camera.position.x = 2500;
-  // camera.position.y = 500;
-  camera.position.x = 0;
-  camera.position.y = 0;
-  camera.position.z = -2500;
+  camera.position.x = 2500;
+  camera.position.y = 500;
+  // camera.position.x = 0;
+  // camera.position.y = 0;
+  // camera.position.z = -2500;
 
   scene = new THREE.Scene();
 
@@ -205,6 +205,8 @@ function init() {
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   container.appendChild(renderer.domElement);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
 
   stats = new Stats();
   // container.appendChild(stats.dom);
@@ -395,6 +397,7 @@ function animate() {
 
   render();
   stats.update();
+  controls.update();
 }
 
 function render() {

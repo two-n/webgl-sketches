@@ -84,8 +84,7 @@ var radialTree = new Map();
 
 init();
 animate();
-// var view = 0; //
-var view = 2; //
+var view = 0; //
 var transitionStart = -5;
 var keyPoints = [];
 
@@ -207,34 +206,16 @@ function init() {
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   container.appendChild(renderer.domElement);
-
   controls = new THREE.OrbitControls(camera, renderer.domElement);
-  var geometry = new THREE.PlaneGeometry(500, 500);
-  var material = new THREE.MeshBasicMaterial({
-    color: 0xffff00,
-    side: THREE.DoubleSide,
-  });
-  var plane = new THREE.Mesh(geometry, material);
-  scene.add(plane);
-  plane.position.x = 500;
-  plane.position.z = -500;
-  console.log("plane", plane);
 
   stats = new Stats();
   // container.appendChild(stats.dom);
 
-  // const testData = [
-  //   { id: "31,2", x: 0 + 5, y: 0 + 5 },
-  //   { id: "35,10", x: window.innerWidth - 5, y: 0 + 5 },
-  //   { id: "41,5", x: 0 + 5, y: window.innerHeight - 5 },
-  //   { id: "45,14", x: window.innerWidth - 5, y: window.innerHeight - 5 },
-  // ];
   camera.updateProjectionMatrix();
   camera.lookAt(scene);
   tree(selectionTree)
     .descendants()
     .reverse()
-    // testData
     .forEach(d => {
       const theta = d.x;
       const x = windowHalfX + Math.cos(theta - Math.PI / 2) * d.y;
@@ -252,23 +233,8 @@ function init() {
       const dir = raycaster.ray.direction.normalize();
       console.log("dir", JSON.stringify(dir));
 
-      const worldVector = raycaster.ray.at(1000, new THREE.Vector3());
-      // const worldVector = camera.position
-      //   .clone()
-      //   .add(dir.clone().multiply(camera.position.clone()));
+      const worldVector = raycaster.ray.at(1000, new THREE.Vector3()); // 100 is arbitrary scalar along ray vector
 
-      // const screenVector = new THREE.Vector3(normX, normY, -1);
-      // console.log("screenVector", screenVector);
-      // screenVector.unproject(camera); // returns normalized values!
-
-      // const aspectRatio =
-      //   renderer.context.canvas.width / renderer.context.canvas.height;
-
-      // const worldVector = new THREE.Vector3(
-      //   screenVector.x / aspectRatio,
-      //   screenVector.y,
-      //   screenVector.z //* camera.position.z
-      // );
       console.log("worldVector", worldVector);
 
       radialTree.set(d.data.id, worldVector);
@@ -280,7 +246,6 @@ function init() {
     .append("g")
     .selectAll("g")
     .data(
-      // testData
       tree(selectionTree)
         .descendants()
         .reverse()
@@ -291,7 +256,6 @@ function init() {
       const x = Math.cos(theta - Math.PI / 2) * d.y;
       const y = Math.sin(theta - Math.PI / 2) * d.y;
       return `translate(${windowHalfX + x},${windowHalfY + y})`;
-      // return `translate(${d.x},${d.y})`;
     });
   node
     .append("circle")
@@ -399,8 +363,8 @@ function zpos(y) {
 }
 
 function ypos(x, y, c) {
-  return 100;
-  // return Math.sin((x + c) * 0.3) * 50 + Math.sin((y + c) * 0.5) * 50;
+  // return 100;
+  return Math.sin((x + c) * 0.3) * 50 + Math.sin((y + c) * 0.5) * 50;
 }
 //
 
@@ -451,9 +415,9 @@ function render() {
         positions[i + 2] = inGroup ? interpolate(v2z, z, t) : z;
 
         scales[j] = 32;
-        // scales[j] =
-        //   (Math.sin((ix + count) * 0.3) + 1) * 8 +
-        //   (Math.sin((iy + count) * 0.5) + 1) * 8;
+        scales[j] =
+          (Math.sin((ix + count) * 0.3) + 1) * 8 +
+          (Math.sin((iy + count) * 0.5) + 1) * 8;
 
         // VIEW 1
       } else if (view === 1) {
@@ -512,27 +476,27 @@ function render() {
     lines[key].verticesNeedUpdate = true;
   });
 
-  // raycaster.setFromCamera(mouse, camera);
-  // console.log("raycaster", raycaster);
-  // raycaster.params.Points.threshold = view === 2 ? 40 : 20;
-  // particles.geometry.boundingBox = null;
-  // const intersects = raycaster.intersectObject(particles);
-  // if (intersects.length > 0) {
-  //   if (view === 2) {
-  //     const selectedIntersects = intersects.filter(({ index }) =>
-  //       selection.has(Math.floor(index / AMOUNTX) + "," + (index % AMOUNTY))
-  //     );
-  //     INTERSECTED = selectedIntersects.length
-  //       ? selectedIntersects[0].index
-  //       : null;
-  //     scales[INTERSECTED] = 250;
-  //   } else {
-  //     INTERSECTED = intersects[0].index;
-  //     scales[INTERSECTED] = 64;
-  //   }
-  // } else if (INTERSECTED !== null) {
-  //   INTERSECTED = null;
-  // }
+  raycaster.setFromCamera(mouse, camera);
+  console.log("raycaster", raycaster);
+  raycaster.params.Points.threshold = view === 2 ? 40 : 20;
+  particles.geometry.boundingBox = null;
+  const intersects = raycaster.intersectObject(particles);
+  if (intersects.length > 0) {
+    if (view === 2) {
+      const selectedIntersects = intersects.filter(({ index }) =>
+        selection.has(Math.floor(index / AMOUNTX) + "," + (index % AMOUNTY))
+      );
+      INTERSECTED = selectedIntersects.length
+        ? selectedIntersects[0].index
+        : null;
+      scales[INTERSECTED] = 250;
+    } else {
+      INTERSECTED = intersects[0].index;
+      scales[INTERSECTED] = 64;
+    }
+  } else if (INTERSECTED !== null) {
+    INTERSECTED = null;
+  }
 
   particles.geometry.attributes.position.needsUpdate = true;
   particles.geometry.attributes.scale.needsUpdate = true;

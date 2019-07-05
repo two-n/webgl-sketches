@@ -120,9 +120,9 @@ function init() {
     1, // near field
     10000 // far field
   );
-  camera.position.x = 2500;
+  camera.position.x = 3000;
   camera.position.y = 500;
-  camera.position.z = -2500;
+  camera.position.z = -3000;
 
   /**
    *  SCENE
@@ -180,8 +180,8 @@ function init() {
     color: 0x0000ff,
   });
 
-  lines["root"] = new THREE.Geometry();
-  lines["root"].setFromPoints(
+  // function calcRootBezier(){
+  var curve = new THREE.CatmullRomCurve3(
     selectionTree.children.map(({ id }) => {
       const i = +id.split(",")[0] * AMOUNTX + +id.split(",")[1];
       return new THREE.Vector3(
@@ -191,6 +191,10 @@ function init() {
       );
     })
   );
+
+  var curvePoints = curve.getPoints(50);
+  lines["root"] = new THREE.BufferGeometry().setFromPoints(curvePoints);
+
   var line = new THREE.Line(lines["root"], lineMaterial);
   scene.add(line);
 
@@ -263,30 +267,6 @@ function init() {
 
       radialTree.set(d.data.id, worldVector);
     });
-
-  /** DRAw RADIAL TREE DOM NODES (as sanity check) */
-  // const node = d3
-  //   .select("svg.tree")
-  //   .attr("height", window.innerHeight)
-  //   .attr("width", window.innerWidth)
-  //   .append("g")
-  //   .selectAll("g")
-  //   .data(
-  //     tree(selectionTree)
-  //       .descendants()
-  //       .reverse()
-  //   )
-  //   .join("g")
-  //   .attr("transform", d => {
-  //     const theta = d.x;
-  //     const x = Math.cos(theta - Math.PI / 2) * d.y;
-  //     const y = Math.sin(theta - Math.PI / 2) * d.y;
-  //     return `translate(${windowHalfX + x},${windowHalfY + y})`;
-  //   });
-  // node
-  //   .append("circle")
-  //   .attr("r", 5)
-  //   .attr("fill", "white");
 
   document.addEventListener("mousemove", onDocumentMouseMove, false);
   window.addEventListener("resize", onWindowResize, false);
@@ -369,7 +349,7 @@ function onWindowResize() {
 
   renderer.setSize(window.innerWidth, window.innerHeight);
 
-  drawHTMLEls();
+  // drawHTMLEls();
 }
 
 function onDocumentMouseMove(event) {
@@ -474,7 +454,7 @@ function render() {
     }
   }
 
-  lines["root"].setFromPoints(
+  var curve = new THREE.CatmullRomCurve3(
     selectionTree.children.map(({ id }) => {
       const i = +id.split(",")[0] * AMOUNTX + +id.split(",")[1];
       return new THREE.Vector3(
@@ -484,7 +464,12 @@ function render() {
       );
     })
   );
+
+  var curvePoints = curve.getPoints(50);
+  lines["root"].setFromPoints(curvePoints);
+
   lines["root"].verticesNeedUpdate = true;
+
   selectionTree.leaves().forEach(({ data }) => {
     const i0 = +data[0].split(",")[0] * AMOUNTX + +data[0].split(",")[1];
     const i1 = +data[1].split(",")[0] * AMOUNTX + +data[1].split(",")[1];

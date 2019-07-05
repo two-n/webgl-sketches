@@ -25,6 +25,10 @@ var SEPARATION = 100,
   AMOUNTY = 50;
 var intcpt = 2500;
 
+/**
+ * DATA & TREE STRUCTURE
+ */
+
 var selectionArray = [
   "31,2",
   "35,10",
@@ -39,6 +43,7 @@ var selectionArray = [
   "45,5",
   "40,7",
 ];
+
 var selectionTree = d3
   .stratify()
   .parentId(d => d[0])
@@ -57,8 +62,21 @@ var selectionTree = d3
   ["41,5", "45,5"],
   ["41,5", "40,7"],
 ]);
-var selection = new Set(selectionArray);
 
+var tree = data =>
+  d3
+    .tree()
+    .size([Math.PI, window.innerHeight / 3])
+    .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth)(
+    d3.hierarchy(data)
+  );
+var radialTree = new Map();
+
+/**
+ * INITIALIZATIONS
+ */
+
+var selection = new Set(selectionArray);
 var container, stats;
 var camera, scene, renderer, raycaster, controls;
 var material, material2;
@@ -73,20 +91,16 @@ var mouse = new THREE.Vector2(),
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
 
-var tree = data =>
-  d3
-    .tree()
-    .size([Math.PI, window.innerHeight / 3])
-    .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth)(
-    d3.hierarchy(data)
-  );
-var radialTree = new Map();
-
-init();
-animate();
 var view = 0; //
 var transitionStart = -5;
 var keyPoints = [];
+
+/**
+ * CALL MAIN FUNCTIONS
+ */
+
+init();
+animate();
 
 function getIthPoint(i, n, r) {
   const theta = (i / n) * 2 * Math.PI;
@@ -97,30 +111,27 @@ function init() {
   container = document.createElement("div");
   document.body.appendChild(container);
 
+  /**
+   * CAMERA
+   */
   camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    // 1000,
-    1,
-    10000
+    75, // field of view
+    window.innerWidth / window.innerHeight, // aspect ratio
+    1, // near field
+    10000 // far field
   );
   camera.position.x = 2500;
   camera.position.y = 500;
-  // camera.position.x = 0;
-  // camera.position.y = 0;
   camera.position.z = -2500;
 
+  /**
+   *  SCENE
+   */
   scene = new THREE.Scene();
 
-  var axesHelper = new THREE.AxesHelper(2500);
-  scene.add(axesHelper);
-
-  //
-
   var numParticles = AMOUNTX * AMOUNTY;
-
-  var positions = new Float32Array(numParticles * 3);
-  var scales = new Float32Array(numParticles);
+  var positions = new Float32Array(numParticles * 3); // 3 positions for each vertex (x, y, z)
+  var scales = new Float32Array(numParticles); // 1 for each, scale number
 
   var i = 0,
     j = 0;
@@ -138,6 +149,9 @@ function init() {
     }
   }
 
+  /**
+   * POINT GEOMETRY
+   */
   var geometry = new THREE.BufferGeometry();
   geometry.addAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.addAttribute("scale", new THREE.BufferAttribute(scales, 1));
@@ -159,6 +173,9 @@ function init() {
   particles = new THREE.Points(geometry, material);
   scene.add(particles);
 
+  /**
+   * LINE GEOMETRY
+   */
   var lineMaterial = new THREE.LineBasicMaterial({
     color: 0x0000ff,
   });
@@ -199,20 +216,32 @@ function init() {
     scene.add(line);
   });
 
-  //
+  // raycaster
   raycaster = new THREE.Raycaster();
   raycaster.params.Points.threshold = 20;
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   container.appendChild(renderer.domElement);
-  controls = new THREE.OrbitControls(camera, renderer.domElement);
 
-  stats = new Stats();
+  // constrols --
+  /**
+   * note: controls needed for our 2D -> 3D to work, unclear why
+   * */
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.update();
+
+  // // stats
+  // stats = new Stats();
   // container.appendChild(stats.dom);
 
-  camera.updateProjectionMatrix();
-  camera.lookAt(scene);
+  // // axes helper
+  // var axesHelper = new THREE.AxesHelper(2500);
+  // scene.add(axesHelper);
+
+  /**
+   * CALC FINAL RADIAL TREE POSITIONS
+   */
   tree(selectionTree)
     .descendants()
     .reverse()
@@ -220,52 +249,46 @@ function init() {
       const theta = d.x;
       const x = windowHalfX + Math.cos(theta - Math.PI / 2) * d.y;
       const y = windowHalfY + Math.sin(theta - Math.PI / 2) * d.y;
+
+      // get coordinates to range [-1,1]
       const normX = (x / window.innerWidth) * 2 - 1;
       const normY = -(y / window.innerHeight) * 2 + 1;
-      console.log("cords", d.x, d.y, x, y);
-      console.log("normX, normY", normX, normY);
 
       const pos = new THREE.Vector2(normX, normY);
-      console.log("pos", JSON.stringify(pos));
+      // projects a ray out from the camera origin to pos
       raycaster.setFromCamera(pos, camera);
 
-      // direction vector from perspective of camera as origin
-      const dir = raycaster.ray.direction.normalize();
-      console.log("dir", JSON.stringify(dir));
-
-      const worldVector = raycaster.ray.at(1000, new THREE.Vector3()); // 100 is arbitrary scalar along ray vector
-
-      console.log("worldVector", worldVector);
+      // get position of ray in direction of pos scalled by t (1000)
+      const worldVector = raycaster.ray.at(1000, new THREE.Vector3());
 
       radialTree.set(d.data.id, worldVector);
     });
-  const node = d3
-    .select("svg.tree")
-    .attr("height", window.innerHeight)
-    .attr("width", window.innerWidth)
-    .append("g")
-    .selectAll("g")
-    .data(
-      tree(selectionTree)
-        .descendants()
-        .reverse()
-    )
-    .join("g")
-    .attr("transform", d => {
-      const theta = d.x;
-      const x = Math.cos(theta - Math.PI / 2) * d.y;
-      const y = Math.sin(theta - Math.PI / 2) * d.y;
-      return `translate(${windowHalfX + x},${windowHalfY + y})`;
-    });
-  node
-    .append("circle")
-    .attr("r", 5)
-    .attr("fill", "white");
+
+  /** DRAw RADIAL TREE DOM NODES (as sanity check) */
+  // const node = d3
+  //   .select("svg.tree")
+  //   .attr("height", window.innerHeight)
+  //   .attr("width", window.innerWidth)
+  //   .append("g")
+  //   .selectAll("g")
+  //   .data(
+  //     tree(selectionTree)
+  //       .descendants()
+  //       .reverse()
+  //   )
+  //   .join("g")
+  //   .attr("transform", d => {
+  //     const theta = d.x;
+  //     const x = Math.cos(theta - Math.PI / 2) * d.y;
+  //     const y = Math.sin(theta - Math.PI / 2) * d.y;
+  //     return `translate(${windowHalfX + x},${windowHalfY + y})`;
+  //   });
+  // node
+  //   .append("circle")
+  //   .attr("r", 5)
+  //   .attr("fill", "white");
 
   document.addEventListener("mousemove", onDocumentMouseMove, false);
-
-  //
-
   window.addEventListener("resize", onWindowResize, false);
   window.addEventListener("keydown", onKeyPress, false);
   window.addEventListener(
@@ -279,10 +302,11 @@ function init() {
 
 function onKeyPress(e) {
   if (e.keyCode === 32) {
+    // space bar
     transitionStart = count;
     view = (view + 1) % 3;
     if (view === 2) {
-      setTimeout(() => drawHTMLEls(), 5000);
+      // setTimeout(() => drawHTMLEls(), 5000);
     } else if (document.querySelector(".ui-nodes").children.length) {
       destroyHTML();
     }
@@ -295,23 +319,25 @@ function destroyHTML() {
   });
 }
 
+// TODO - update to pull from radial tree positioning
 function drawHTMLEls() {
   if (document.querySelector(".ui-nodes").children.length) {
     destroyHTML();
   }
   const { canvas } = renderer.context;
   const positions = particles.geometry.attributes.position.array;
-  camera.updateProjectionMatrix();
 
   selectionArray.forEach(e => {
     const i = +e.split(",")[0] * AMOUNTX + +e.split(",")[1];
 
+    // returns NDCs from [-1,1]
     const screen = new THREE.Vector3(
       positions[i * 3],
       positions[i * 3 + 1],
       positions[i * 3 + 2]
     ).project(camera);
 
+    // normalizes values for screen dimensions
     const x = Math.round(
       (0.5 + screen.x / 2) * (canvas.width / window.devicePixelRatio)
     );
@@ -347,7 +373,7 @@ function onWindowResize() {
 }
 
 function onDocumentMouseMove(event) {
-  event.preventDefault();
+  event.preventDefault(); // comment to out get orbit control mouse events to work
   mouse.set(
     (event.layerX / window.innerWidth) * 2 - 1,
     -(event.clientY / window.innerHeight) * 2 + 1
@@ -372,19 +398,18 @@ function animate() {
   requestAnimationFrame(animate);
 
   render();
-  stats.update();
   controls.update();
+  // stats.update();
 }
 
 function render() {
-  // camera.position.x += (mouse.x - camera.position.x) * 0.05;
-  // camera.position.y += (-mouse.y - camera.position.y) * 0.05;
-  camera.lookAt(scene.position);
   var positions = particles.geometry.attributes.position.array;
   var scales = particles.geometry.attributes.scale.array;
 
   var i = 0,
     j = 0;
+
+  // t = percent of transition done
   const t = Math.min(1, Math.max(0, (count - transitionStart) / 10));
 
   for (var ix = 0; ix < AMOUNTX; ix++) {
@@ -409,6 +434,7 @@ function render() {
       }
 
       // VIEW 0
+      // transitions between radial position and starting position
       if (view === 0) {
         positions[i] = inGroup ? interpolate(v2x, x, t) : x;
         positions[i + 1] = inGroup ? interpolate(v2y, y, t) : y;
@@ -420,6 +446,7 @@ function render() {
           (Math.sin((iy + count) * 0.5) + 1) * 8;
 
         // VIEW 1
+        // raise points up out of the field
       } else if (view === 1) {
         positions[i] = x;
         positions[i + 1] = inGroup
@@ -433,6 +460,7 @@ function render() {
             (Math.sin((iy + count) * 0.5) + 1) * 8;
 
         // VIEW 2
+        // forms radial view
       } else if (view === 2) {
         positions[i] = inGroup ? interpolate(x, v2x, t) : x;
         positions[i + 1] = inGroup ? interpolate(400, v2y, t) : y;
@@ -477,7 +505,6 @@ function render() {
   });
 
   raycaster.setFromCamera(mouse, camera);
-  console.log("raycaster", raycaster);
   raycaster.params.Points.threshold = view === 2 ? 40 : 20;
   particles.geometry.boundingBox = null;
   const intersects = raycaster.intersectObject(particles);
@@ -489,7 +516,7 @@ function render() {
       INTERSECTED = selectedIntersects.length
         ? selectedIntersects[0].index
         : null;
-      scales[INTERSECTED] = 250;
+      scales[INTERSECTED] = 250; // make dot bigger on mouse hover
     } else {
       INTERSECTED = intersects[0].index;
       scales[INTERSECTED] = 64;

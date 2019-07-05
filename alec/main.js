@@ -177,7 +177,7 @@ function init() {
    * LINE GEOMETRY
    */
   var lineMaterial = new THREE.LineBasicMaterial({
-    color: 0x0000ff,
+    color: new THREE.Color(0xffffff),
   });
 
   // function calcRootBezier(){

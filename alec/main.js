@@ -407,6 +407,33 @@ function onKeyPress(e) {
   }
 }
 
+/**
+ * View O: all dots are in the same undulating field
+ *  field: normal position, default scale
+ *  nodes: field position, default scale
+ *  camera: starting position
+ */
+function transition_view0() {}
+
+/**
+ * View 1: L1 dots rise above field
+ *  field: normal position, lightened scale
+ *  nodes: elevated position, larger scale
+ *  camera: more birds-eye-view vantage point
+ */
+function transition_view1() {
+  // tween uniform.isElevatedPosition to 1
+}
+
+/**
+ * View 2: title view, camera zooms in on selected node
+ *  field: normal position, lightened scale
+ *  nodes: elevated position, larger scale
+ *  camera: zooms and rotates to frame selected node
+ * note: this view should only be posible from view 1
+ */
+function transition_view2(node) {}
+
 function destroyHTML() {
   document.querySelectorAll(".ui-nodes div").forEach(e => {
     document.querySelector(".ui-nodes").removeChild(e);

@@ -1,8 +1,13 @@
 const VERT = `
 attribute float scale;
+attribute vec2 indices;
+
+uniform float count;
 
 void main() {
-  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+  float y = sin((indices.x + count) * 0.3) * 50.0 + sin((indices.y + count) * 0.5) * 50.0;
+  vec3 pos = vec3(position.x, y, position.z);
+  vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
   gl_PointSize = scale * ( 500.0 / - mvPosition.z );
   gl_Position = projectionMatrix * mvPosition;
 }
@@ -24,6 +29,12 @@ var SEPARATION = 100,
   AMOUNTX = 50,
   AMOUNTY = 50;
 var intcpt = 2500;
+var config = {
+  scale_L1: 40,
+  scale_L2: 30,
+  scale_L3: 20,
+  elevation: 400, // y offset
+};
 
 /**
  * DATA & TREE STRUCTURE
@@ -81,7 +92,8 @@ var container, stats;
 var camera, scene, renderer, raycaster, controls;
 var material, material2;
 
-var particles,
+var field,
+  nodes,
   lines = {},
   count = 0;
 
@@ -119,7 +131,7 @@ d3.json("data.json")
   });
 
 /**
- * CALL MAIN FUNCTIONS
+ * INITIALIZATION
  */
 function init() {
   container = document.createElement("div");
@@ -143,11 +155,9 @@ function init() {
    */
   scene = new THREE.Scene();
 
-  var numParticles = AMOUNTX * AMOUNTY;
-  var positions = new Float32Array(numParticles * 3); // 3 positions for each vertex (x, y, z)
-  var scales = new Float32Array(numParticles); // 1 for each, scale number
-
-  // raycaster
+  /**
+   * RAYCASTER
+   */
   raycaster = new THREE.Raycaster();
   raycaster.params.Points.threshold = 20;
   renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -155,7 +165,8 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   container.appendChild(renderer.domElement);
 
-  /** controls --
+  /**
+   * CONTROLS
    * note: controls needed for our 2D -> 3D to work, unclear why
    * */
   controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -164,38 +175,128 @@ function init() {
   /**
    * POINT GEOMETRY
    */
-  var i = 0,
-    j = 0;
-
-  // initial positions
-  for (var ix = 0; ix < AMOUNTX; ix++) {
-    for (var iy = 0; iy < AMOUNTY; iy++) {
-      positions[i] = xpos(ix); // x
-      positions[i + 1] = 100; // y
-      positions[i + 2] = zpos(iy); // z
-
-      scales[j] = 32;
-
-      i += 3;
-      j++;
-    }
-  }
-
-  // instantiate geometry
-  var geometry = new THREE.BufferGeometry();
-  geometry.addAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.addAttribute("scale", new THREE.BufferAttribute(scales, 1));
-
+  // material - used for both field and nodes
+  // notes: https://stackoverflow.com/a/45472747
   material = new THREE.ShaderMaterial({
     uniforms: {
       color: { value: new THREE.Color(0xffffff) },
+      isElevatedPosition: { value: 0.0 }, // percent elevated, used in shader to TWEEN values
+      count: { value: 0.0 }, // count that ticks up on each render
     },
     vertexShader: VERT,
     fragmentShader: FRAG,
   });
 
-  particles = new THREE.Points(geometry, material);
-  scene.add(particles);
+  initField();
+  initNodes();
+
+  function initNodes() {
+    var descendants = fanJourney.descendants().filter(d => d["ref"] != "root");
+    var numNodes = descendants.length;
+    var positions = new Float32Array(numNodes * 3); // 3 positions for each vertex (x, y, z)
+    var indices = new Float32Array(numNodes * 2); // 2 positions for each vertex (x, y, z)
+    var scales = new Float32Array(numNodes); // 1 for each
+    var elevatedPositions = new Float32Array(numNodes * 3); // 3 positions for each vertex (x, y, z)
+    var elevatedScales = new Float32Array(numNodes); // 1 for each
+
+    /**
+     * go through all the fanJourney nodes and assign:
+     * (1) initial `positions` (on the grid)
+     * (2) `customPositions` - elevated up
+     * (3) `scale` - L1 normal size, descendents are 0
+     * (4) `customScale` - L1 are larger, descendents have relative size
+     * */
+
+    var i = 0,
+      k = 0,
+      j = 0;
+    for (var i_nodes = 0; i_nodes < numNodes; i_nodes++) {
+      // first four, pluck off of selection array
+      var currentNode = descendants[i_nodes];
+      if (currentNode.data.data["Node Hierarchy"] === 1) {
+        var [ix, iy] = selectionArray[i_nodes].split(",");
+
+        // x and z are the same, y is elevated
+        positions[i] = elevatedPositions[i] = xpos(ix); // x
+        positions[i + 2] = elevatedPositions[i + 2] = zpos(iy); // z
+
+        positions[i + 1] = 100; // normal y // TODO: need to undulate in shader
+        elevatedPositions[i + 1] = config.elevation; // elevated y
+
+        indices[k] = ix;
+        indices[k + 1] = iy;
+
+        scales[j] = config.scale_L1;
+      } else {
+        console.log("currentNode.data.data", currentNode.data.data);
+        // TODO: calculate satellite node positions
+        // scales[j] = 32;
+      }
+
+      i += 3;
+      k += 2;
+      j++;
+    }
+
+    //  geometry
+    var geometry = new THREE.BufferGeometry();
+    // positions
+    geometry.addAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.addAttribute(
+      "customPosition",
+      new THREE.BufferAttribute(elevatedPositions, 3)
+    );
+    // indices
+    geometry.addAttribute("indices", new THREE.BufferAttribute(indices, 2));
+    // scales
+    geometry.addAttribute("scale", new THREE.BufferAttribute(scales, 1));
+    geometry.addAttribute(
+      "customScale",
+      new THREE.BufferAttribute(elevatedScales, 1)
+    );
+
+    nodes = new THREE.Points(geometry, material);
+    nodes.name = "nodes";
+    scene.add(nodes);
+  }
+
+  function initField() {
+    var numParticles = AMOUNTX * AMOUNTY;
+    var positions = new Float32Array(numParticles * 3); // 3 positions for each vertex (x, y, z)
+    var indices = new Float32Array(numParticles * 2); // 2 positions for each vertex (x, y, z)
+    var scales = new Float32Array(numParticles); // 1 for each, scale number
+    var i = 0,
+      k = 0,
+      j = 0;
+
+    // initial positions
+    for (var ix = 0; ix < AMOUNTX; ix++) {
+      for (var iy = 0; iy < AMOUNTY; iy++) {
+        positions[i] = xpos(ix); // x
+        positions[i + 1] = 100; // y
+        positions[i + 2] = zpos(iy); // z
+
+        indices[k] = ix;
+        indices[k + 1] = iy;
+
+        scales[j] = 32;
+
+        i += 3;
+        k += 2;
+        j++;
+      }
+    }
+
+    //  geometry
+    var geometry = new THREE.BufferGeometry();
+    geometry.addAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.addAttribute("indices", new THREE.BufferAttribute(indices, 2));
+    geometry.addAttribute("scale", new THREE.BufferAttribute(scales, 1));
+
+    field = new THREE.Points(geometry, material);
+    field.name = "field";
+    scene.add(field);
+  }
 
   /**
    * CALC FINAL RADIAL TREE POSITIONS
@@ -218,45 +319,23 @@ function init() {
     color: new THREE.Color(0xffffff),
   });
 
-  // function calcRootBezier(){
-  var curve = new THREE.CatmullRomCurve3(
-    selectionTree.children.map(({ id }) => {
-      const i = +id.split(",")[0] * AMOUNTX + +id.split(",")[1];
-      return new THREE.Vector3(
-        positions[i * 3],
-        positions[i * 3 + 1],
-        positions[i * 3 + 2]
-      );
-    })
-  );
+  // // function calcRootBezier(){
+  // var curve = new THREE.CatmullRomCurve3(
+  //   selectionTree.children.map(({ id }) => {
+  //     const i = +id.split(",")[0] * AMOUNTX + +id.split(",")[1];
+  //     return new THREE.Vector3(
+  //       positions[i * 3],
+  //       positions[i * 3 + 1],
+  //       positions[i * 3 + 2]
+  //     );
+  //   })
+  // );
 
-  var curvePoints = curve.getPoints(50);
-  lines["root"] = new THREE.BufferGeometry().setFromPoints(curvePoints);
+  // var curvePoints = curve.getPoints(50);
+  // lines["root"] = new THREE.BufferGeometry().setFromPoints(curvePoints);
 
-  var line = new THREE.Line(lines["root"], lineMaterial);
-  scene.add(line);
-
-  selectionTree.leaves().forEach(({ data }) => {
-    const i0 = +data[0].split(",")[0] * AMOUNTX + +data[0].split(",")[1];
-    const i1 = +data[1].split(",")[0] * AMOUNTX + +data[1].split(",")[1];
-    const key = data.join("-");
-    lines[key] = new THREE.Geometry();
-    lines[key].setFromPoints([
-      new THREE.Vector3(
-        positions[i0 * 3],
-        positions[i0 * 3 + 1],
-        positions[i0 * 3 + 2]
-      ),
-      new THREE.Vector3(
-        positions[i1 * 3],
-        positions[i1 * 3 + 1],
-        positions[i1 * 3 + 2]
-      ),
-    ]);
-
-    var line = new THREE.Line(lines[key], lineMaterial);
-    scene.add(line);
-  });
+  // var line = new THREE.Line(lines["root"], lineMaterial);
+  // scene.add(line);
 
   document.addEventListener("mousemove", onDocumentMouseMove, false);
   window.addEventListener("resize", onWindowResize, false);
@@ -289,117 +368,105 @@ function animate() {
 
   render();
   controls.update();
+  // TWEEN.update();
   // stats.update();
 }
 
 function render() {
-  var positions = particles.geometry.attributes.position.array;
-  var scales = particles.geometry.attributes.scale.array;
+  // TODO: instead tween uniform value
+  // pass in count to shader
+  count += 0.1;
+  material.uniforms.count.value = count;
 
-  var i = 0,
-    j = 0;
+  // var positions = field.geometry.attributes.position.array;
+  var scales = field.geometry.attributes.scale.array;
 
-  // t = percent of transition done
-  const t = Math.min(1, Math.max(0, (count - transitionStart) / 10));
+  // var i = 0,
+  //   j = 0;
 
-  for (var ix = 0; ix < AMOUNTX; ix++) {
-    for (var iy = 0; iy < AMOUNTY; iy++) {
-      const slug = ix + "," + iy;
-      const inGroup = selection.has(slug);
-      const x = xpos(ix);
-      const y = ypos(ix, iy, count);
-      const z = zpos(iy);
+  // // t = percent of transition done
+  // const t = Math.min(1, Math.max(0, (count - transitionStart) / 10));
 
-      let v2x, v2y, v2z;
+  // for (var ix = 0; ix < AMOUNTX; ix++) {
+  //   for (var iy = 0; iy < AMOUNTY; iy++) {
+  //     const slug = ix + "," + iy;
+  //     const inGroup = selection.has(slug);
+  //     const x = xpos(ix);
+  //     const y = ypos(ix, iy, count);
+  //     const z = zpos(iy);
 
-      // starting position
-      if (inGroup) {
-        const worldVector = radialTree.get(slug);
-        v2x = worldVector.x;
-        v2y = worldVector.y;
-        v2z = worldVector.z;
-      }
+  //     let v2x, v2y, v2z;
 
-      // VIEW 0
-      // transitions between radial position and starting position
-      if (view === 0) {
-        positions[i] = inGroup ? interpolate(v2x, x, t) : x;
-        positions[i + 1] = inGroup ? interpolate(v2y, y, t) : y;
-        positions[i + 2] = inGroup ? interpolate(v2z, z, t) : z;
+  //     // starting position
+  //     if (inGroup) {
+  //       const worldVector = radialTree.get(slug);
+  //       v2x = worldVector.x;
+  //       v2y = worldVector.y;
+  //       v2z = worldVector.z;
+  //     }
 
-        scales[j] = 32;
-        scales[j] =
-          (Math.sin((ix + count) * 0.3) + 1) * 8 +
-          (Math.sin((iy + count) * 0.5) + 1) * 8;
+  //     // VIEW 0
+  //     // transitions between radial position and starting position
+  //     if (view === 0) {
+  //       // const tween = new TWEEN.Tween(positions[i]).to({});
 
-        // VIEW 1
-        // raise points up out of the field
-      } else if (view === 1) {
-        positions[i] = x;
-        positions[i + 1] = inGroup
-          ? interpolate(ypos(ix, iy, transitionStart), 400, t)
-          : y;
-        positions[i + 2] = z;
+  //       positions[i] = inGroup ? interpolate(v2x, x, t) : x;
+  //       positions[i + 1] = inGroup ? interpolate(v2y, y, t) : y;
+  //       positions[i + 2] = inGroup ? interpolate(v2z, z, t) : z;
 
-        scales[j] = inGroup
-          ? interpolate(16, 40, t)
-          : (Math.sin((ix + count) * 0.3) + 1) * 8 +
-            (Math.sin((iy + count) * 0.5) + 1) * 8;
+  //       scales[j] = 32;
+  //       scales[j] =
+  //         (Math.sin((ix + count) * 0.3) + 1) * 8 +
+  //         (Math.sin((iy + count) * 0.5) + 1) * 8;
 
-        // VIEW 2
-        // forms radial view
-      } else if (view === 2) {
-        positions[i] = inGroup ? interpolate(x, v2x, t) : x;
-        positions[i + 1] = inGroup ? interpolate(400, v2y, t) : y;
-        positions[i + 2] = inGroup ? interpolate(z, v2z, t) : z;
+  //       // VIEW 1
+  //       // raise points up out of the field
+  //     } else if (view === 1) {
+  //       positions[i] = x;
+  //       positions[i + 1] = inGroup
+  //         ? interpolate(ypos(ix, iy, transitionStart), 400, t)
+  //         : y;
+  //       positions[i + 2] = z;
 
-        scales[j] = inGroup ? interpolate(40, 40, t) : interpolate(16, 8, t);
-      }
+  //       scales[j] = inGroup
+  //         ? interpolate(16, 40, t)
+  //         : (Math.sin((ix + count) * 0.3) + 1) * 8 +
+  //           (Math.sin((iy + count) * 0.5) + 1) * 8;
 
-      i += 3;
-      j++;
-    }
-  }
+  //       // VIEW 2
+  //       // forms radial view
+  //     } else if (view === 2) {
+  //       positions[i] = inGroup ? interpolate(x, v2x, t) : x;
+  //       positions[i + 1] = inGroup ? interpolate(400, v2y, t) : y;
+  //       positions[i + 2] = inGroup ? interpolate(z, v2z, t) : z;
 
-  var curve = new THREE.CatmullRomCurve3(
-    selectionTree.children.map(({ id }) => {
-      const i = +id.split(",")[0] * AMOUNTX + +id.split(",")[1];
-      return new THREE.Vector3(
-        positions[i * 3],
-        positions[i * 3 + 1],
-        positions[i * 3 + 2]
-      );
-    })
-  );
+  //       scales[j] = inGroup ? interpolate(40, 40, t) : interpolate(16, 8, t);
+  //     }
 
-  var curvePoints = curve.getPoints(100);
-  lines["root"].setFromPoints(curvePoints);
+  //     i += 3;
+  //     j++;
+  //   }
+  // }
 
-  lines["root"].verticesNeedUpdate = true;
+  // var curve = new THREE.CatmullRomCurve3(
+  //   selectionTree.children.map(({ id }) => {
+  //     const i = +id.split(",")[0] * AMOUNTX + +id.split(",")[1];
+  //     return new THREE.Vector3(
+  //       positions[i * 3],
+  //       positions[i * 3 + 1],
+  //       positions[i * 3 + 2]
+  //     );
+  //   })
+  // );
 
-  selectionTree.leaves().forEach(({ data }) => {
-    const i0 = +data[0].split(",")[0] * AMOUNTX + +data[0].split(",")[1];
-    const i1 = +data[1].split(",")[0] * AMOUNTX + +data[1].split(",")[1];
-    const key = data.join("-");
-    lines[key].setFromPoints([
-      new THREE.Vector3(
-        positions[i0 * 3],
-        positions[i0 * 3 + 1],
-        positions[i0 * 3 + 2]
-      ),
-      new THREE.Vector3(
-        positions[i1 * 3],
-        positions[i1 * 3 + 1],
-        positions[i1 * 3 + 2]
-      ),
-    ]);
-    lines[key].verticesNeedUpdate = true;
-  });
+  // var curvePoints = curve.getPoints(100);
+  // lines["root"].setFromPoints(curvePoints);
+  // lines["root"].verticesNeedUpdate = true;
 
   raycaster.setFromCamera(mouse, camera);
   raycaster.params.Points.threshold = view === 2 ? 40 : 20;
-  particles.geometry.boundingBox = null;
-  const intersects = raycaster.intersectObject(particles);
+  field.geometry.boundingBox = null;
+  const intersects = raycaster.intersectObject(field);
   if (intersects.length > 0) {
     if (view === 2) {
       const selectedIntersects = intersects.filter(({ index }) =>
@@ -417,12 +484,11 @@ function render() {
     INTERSECTED = null;
   }
 
-  particles.geometry.attributes.position.needsUpdate = true;
-  particles.geometry.attributes.scale.needsUpdate = true;
+  field.geometry.attributes.position.needsUpdate = true;
+  field.geometry.attributes.scale.needsUpdate = true;
 
+  material.uniforms.count.needsUpdate = true;
   renderer.render(scene, camera);
-
-  count += 0.1;
 }
 
 /**
@@ -453,7 +519,7 @@ function drawHTMLEls() {
     destroyHTML();
   }
   const { canvas } = renderer.context;
-  const positions = particles.geometry.attributes.position.array;
+  const positions = field.geometry.attributes.position.array;
 
   selectionArray.forEach(e => {
     const i = +e.split(",")[0] * AMOUNTX + +e.split(",")[1];

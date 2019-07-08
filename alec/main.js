@@ -28,7 +28,6 @@ var intcpt = 2500;
 /**
  * DATA & TREE STRUCTURE
  */
-
 var selectionArray = [
   "31,2",
   "35,10",
@@ -76,7 +75,8 @@ var radialTree = new Map();
  * INITIALIZATIONS
  */
 
-var selection = new Set(selectionArray);
+var selection = new Set(selectionArray),
+  fanJourney;
 var container, stats;
 var camera, scene, renderer, raycaster, controls;
 var material, material2;
@@ -96,17 +96,31 @@ var transitionStart = -5;
 var keyPoints = [];
 
 /**
+ * PULL Fan Journey DATA
+ */
+d3.json("data.json")
+  .then(data => {
+    const stratefied = d3
+      .stratify()
+      .id(d => d["ref"])
+      .parentId(d => d["Parent Node ID"])([
+      { ["ref"]: "root", ["Parent Node ID"]: "" }, // append root node
+      ...data["Fan Journey"].filter(
+        d => d["Node Name"] && d["Node Hierarchy"] < 4
+      ),
+    ]);
+
+    fanJourney = d3.hierarchy(stratefied);
+  })
+  .then(data => {
+    console.log("fanJourney", fanJourney);
+    init();
+    animate();
+  });
+
+/**
  * CALL MAIN FUNCTIONS
  */
-
-init();
-animate();
-
-function getIthPoint(i, n, r) {
-  const theta = (i / n) * 2 * Math.PI;
-  return [r * Math.cos(theta), r * Math.sin(theta)];
-}
-
 function init() {
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -120,9 +134,9 @@ function init() {
     1, // near field
     10000 // far field
   );
-  camera.position.x = 3000;
+  camera.position.x = 2500;
   camera.position.y = 500;
-  camera.position.z = -3000;
+  camera.position.z = -2500;
 
   /**
    *  SCENE
@@ -133,9 +147,27 @@ function init() {
   var positions = new Float32Array(numParticles * 3); // 3 positions for each vertex (x, y, z)
   var scales = new Float32Array(numParticles); // 1 for each, scale number
 
+  // raycaster
+  raycaster = new THREE.Raycaster();
+  raycaster.params.Points.threshold = 20;
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  container.appendChild(renderer.domElement);
+
+  /** controls --
+   * note: controls needed for our 2D -> 3D to work, unclear why
+   * */
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.update();
+
+  /**
+   * POINT GEOMETRY
+   */
   var i = 0,
     j = 0;
 
+  // initial positions
   for (var ix = 0; ix < AMOUNTX; ix++) {
     for (var iy = 0; iy < AMOUNTY; iy++) {
       positions[i] = xpos(ix); // x
@@ -149,9 +181,7 @@ function init() {
     }
   }
 
-  /**
-   * POINT GEOMETRY
-   */
+  // instantiate geometry
   var geometry = new THREE.BufferGeometry();
   geometry.addAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.addAttribute("scale", new THREE.BufferAttribute(scales, 1));
@@ -164,14 +194,22 @@ function init() {
     fragmentShader: FRAG,
   });
 
-  // red material
-  material2 = material.clone();
-  material2.uniforms = {
-    color: { value: new THREE.Color(0xff0000) },
-  };
-
   particles = new THREE.Points(geometry, material);
   scene.add(particles);
+
+  /**
+   * CALC FINAL RADIAL TREE POSITIONS
+   */
+  tree(selectionTree)
+    .descendants()
+    .reverse()
+    .forEach(d => {
+      const theta = d.x;
+      const x = windowHalfX + Math.cos(theta - Math.PI / 2) * d.y;
+      const y = windowHalfY + Math.sin(theta - Math.PI / 2) * d.y;
+      const worldVector = get3Dfrom2d(x, y, 1000, camera, raycaster);
+      radialTree.set(d.data.id, worldVector);
+    });
 
   /**
    * LINE GEOMETRY
@@ -220,54 +258,6 @@ function init() {
     scene.add(line);
   });
 
-  // raycaster
-  raycaster = new THREE.Raycaster();
-  raycaster.params.Points.threshold = 20;
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  container.appendChild(renderer.domElement);
-
-  // constrols --
-  /**
-   * note: controls needed for our 2D -> 3D to work, unclear why
-   * */
-  controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.update();
-
-  // // stats
-  // stats = new Stats();
-  // container.appendChild(stats.dom);
-
-  // // axes helper
-  // var axesHelper = new THREE.AxesHelper(2500);
-  // scene.add(axesHelper);
-
-  /**
-   * CALC FINAL RADIAL TREE POSITIONS
-   */
-  tree(selectionTree)
-    .descendants()
-    .reverse()
-    .forEach(d => {
-      const theta = d.x;
-      const x = windowHalfX + Math.cos(theta - Math.PI / 2) * d.y;
-      const y = windowHalfY + Math.sin(theta - Math.PI / 2) * d.y;
-
-      // get coordinates to range [-1,1]
-      const normX = (x / window.innerWidth) * 2 - 1;
-      const normY = -(y / window.innerHeight) * 2 + 1;
-
-      const pos = new THREE.Vector2(normX, normY);
-      // projects a ray out from the camera origin to pos
-      raycaster.setFromCamera(pos, camera);
-
-      // get position of ray in direction of pos scalled by t (1000)
-      const worldVector = raycaster.ray.at(1000, new THREE.Vector3());
-
-      radialTree.set(d.data.id, worldVector);
-    });
-
   document.addEventListener("mousemove", onDocumentMouseMove, false);
   window.addEventListener("resize", onWindowResize, false);
   window.addEventListener("keydown", onKeyPress, false);
@@ -277,86 +267,6 @@ function init() {
       if (view === 2 && INTERSECTED) console.log(INTERSECTED);
     },
     false
-  );
-}
-
-function onKeyPress(e) {
-  if (e.keyCode === 32) {
-    // space bar
-    transitionStart = count;
-    view = (view + 1) % 3;
-    if (view === 2) {
-      // setTimeout(() => drawHTMLEls(), 5000);
-    } else if (document.querySelector(".ui-nodes").children.length) {
-      destroyHTML();
-    }
-  }
-}
-
-function destroyHTML() {
-  document.querySelectorAll(".ui-nodes div").forEach(e => {
-    document.querySelector(".ui-nodes").removeChild(e);
-  });
-}
-
-// TODO - update to pull from radial tree positioning
-function drawHTMLEls() {
-  if (document.querySelector(".ui-nodes").children.length) {
-    destroyHTML();
-  }
-  const { canvas } = renderer.context;
-  const positions = particles.geometry.attributes.position.array;
-
-  selectionArray.forEach(e => {
-    const i = +e.split(",")[0] * AMOUNTX + +e.split(",")[1];
-
-    // returns NDCs from [-1,1]
-    const screen = new THREE.Vector3(
-      positions[i * 3],
-      positions[i * 3 + 1],
-      positions[i * 3 + 2]
-    ).project(camera);
-
-    // normalizes values for screen dimensions
-    const x = Math.round(
-      (0.5 + screen.x / 2) * (canvas.width / window.devicePixelRatio)
-    );
-    const y = Math.round(
-      (0.5 - screen.y / 2) * (canvas.height / window.devicePixelRatio)
-    );
-
-    const child = document
-      .querySelector(".ui-nodes")
-      .appendChild(document.createElement("div"));
-    child.style.left = x - 14 + "px";
-    child.style.top = y - 14 + "px";
-  });
-  // selection.has(Math.floor(index / AMOUNTX) + "," + (index % AMOUNTY))
-}
-
-//https://stackoverflow.com/questions/27409074/converting-3d-position-to-2d-screen-position-r69
-
-function interpolate(a, b, i) {
-  return a + (b - a) * i;
-}
-
-function onWindowResize() {
-  windowHalfX = window.innerWidth / 2;
-  windowHalfY = window.innerHeight / 2;
-
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-
-  renderer.setSize(window.innerWidth, window.innerHeight);
-
-  // drawHTMLEls();
-}
-
-function onDocumentMouseMove(event) {
-  event.preventDefault(); // comment to out get orbit control mouse events to work
-  mouse.set(
-    (event.layerX / window.innerWidth) * 2 - 1,
-    -(event.clientY / window.innerHeight) * 2 + 1
   );
 }
 
@@ -401,16 +311,13 @@ function render() {
       const z = zpos(iy);
 
       let v2x, v2y, v2z;
+
+      // starting position
       if (inGroup) {
         const worldVector = radialTree.get(slug);
         v2x = worldVector.x;
         v2y = worldVector.y;
         v2z = worldVector.z;
-        // const selectionIndex = selectionArray.indexOf(slug);
-        // [v2x, v2y] = getIthPoint(selectionIndex, selectionArray.length, 1000);
-        // v2x *= 0.72;
-        // v2x += intcpt / 2;
-        // v2y += 200;
       }
 
       // VIEW 0
@@ -465,7 +372,7 @@ function render() {
     })
   );
 
-  var curvePoints = curve.getPoints(50);
+  var curvePoints = curve.getPoints(100);
   lines["root"].setFromPoints(curvePoints);
 
   lines["root"].verticesNeedUpdate = true;
@@ -516,4 +423,109 @@ function render() {
   renderer.render(scene, camera);
 
   count += 0.1;
+}
+
+/**
+ * HELPERS AND HANDLERS
+ */
+
+function onKeyPress(e) {
+  if (e.keyCode === 32) {
+    // space bar
+    transitionStart = count;
+    view = (view + 1) % 3;
+    if (view === 2) {
+      // setTimeout(() => drawHTMLEls(), 5000);
+    } else if (document.querySelector(".ui-nodes").children.length) {
+      destroyHTML();
+    }
+  }
+}
+
+function destroyHTML() {
+  document.querySelectorAll(".ui-nodes div").forEach(e => {
+    document.querySelector(".ui-nodes").removeChild(e);
+  });
+}
+
+function drawHTMLEls() {
+  if (document.querySelector(".ui-nodes").children.length) {
+    destroyHTML();
+  }
+  const { canvas } = renderer.context;
+  const positions = particles.geometry.attributes.position.array;
+
+  selectionArray.forEach(e => {
+    const i = +e.split(",")[0] * AMOUNTX + +e.split(",")[1];
+
+    // returns NDCs from [-1,1]
+    const screen = new THREE.Vector3(
+      positions[i * 3],
+      positions[i * 3 + 1],
+      positions[i * 3 + 2]
+    ).project(camera);
+
+    // normalizes values for screen dimensions
+    const x = Math.round(
+      (0.5 + screen.x / 2) * (canvas.width / window.devicePixelRatio)
+    );
+    const y = Math.round(
+      (0.5 - screen.y / 2) * (canvas.height / window.devicePixelRatio)
+    );
+
+    const child = document
+      .querySelector(".ui-nodes")
+      .appendChild(document.createElement("div"));
+    child.style.left = x - 14 + "px";
+    child.style.top = y - 14 + "px";
+  });
+  // selection.has(Math.floor(index / AMOUNTX) + "," + (index % AMOUNTY))
+}
+
+//https://stackoverflow.com/questions/27409074/converting-3d-position-to-2d-screen-position-r69
+
+function interpolate(from, to, percentDone) {
+  return from + (to - from) * percentDone;
+}
+
+function onWindowResize() {
+  windowHalfX = window.innerWidth / 2;
+  windowHalfY = window.innerHeight / 2;
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  // drawHTMLEls();
+}
+
+function onDocumentMouseMove(event) {
+  event.preventDefault();
+  mouse.set(
+    (event.layerX / window.innerWidth) * 2 - 1,
+    -(event.clientY / window.innerHeight) * 2 + 1
+  );
+}
+
+/**
+ * Given X and Y in DOM screen space [0,width/height],
+ *  returns [x, y, z] Vector3 of the intersection of a ray passing through
+ *  those points on a plane determined by `at`.
+ * @param {*} normX - in screen coordinates with range [0, innerWidth]
+ * @param {*} normY - in screen coordinates with range  [0, innerHeight]
+ * @param {*} at - the position z directrion from camera origin
+ * this acts as a scalar to specify how close to the camera to render the points
+ */
+function get3Dfrom2d(screenX, screenY, at, camera, raycaster) {
+  // Normalize coordinates from screen space to NDC space [-1,1]
+  const normX = (screenX / window.innerWidth) * 2 - 1;
+  const normY = -(screenY / window.innerHeight) * 2 + 1;
+
+  const pos = new THREE.Vector2(normX, normY);
+
+  // projects a ray out from the camera origin to pos
+  raycaster.setFromCamera(pos, camera);
+
+  // get position of ray in direction of pos scalled by t (1000)
+  return raycaster.ray.at(at, new THREE.Vector3());
 }

@@ -1,14 +1,17 @@
 const VERT = `
 attribute float scale;
 attribute vec2 indices;
+attribute vec3 customPosition;
 
 uniform float count;
+uniform float isElevatedPosition;
 
 void main() {
   float dynamic_y = sin((indices.x + count) * 0.3) * 50.0 + sin((indices.y + count) * 0.5) * 50.0;
   float y = position.y > 100.0 ? position.y : dynamic_y;
   vec3 pos = vec3(position.x, y, position.z);
-  vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
+  vec3 tweenPos = pos + (customPosition - pos) * isElevatedPosition;
+  vec4 mvPosition = modelViewMatrix * vec4( tweenPos, 1.0 );
   gl_PointSize = scale * ( 500.0 / - mvPosition.z );
   gl_Position = projectionMatrix * mvPosition;
 }
@@ -399,11 +402,13 @@ function onKeyPress(e) {
     // space bar
     transitionStart = count;
     view = (view + 1) % 3;
-    if (view === 2) {
+    if (view === 1) {
+      transition_view1();
       // setTimeout(() => drawHTMLEls(), 5000);
-    } else if (document.querySelector(".ui-nodes").children.length) {
-      destroyHTML();
     }
+    // else if (document.querySelector(".ui-nodes").children.length) {
+    //   destroyHTML();
+    // }
   }
 }
 
@@ -416,13 +421,18 @@ function onKeyPress(e) {
 function transition_view0() {}
 
 /**
- * View 1: L1 dots rise above field
+ * View 1: L1 dots rise `above field
  *  field: normal position, lightened scale
  *  nodes: elevated position, larger scale
  *  camera: more birds-eye-view vantage point
  */
 function transition_view1() {
   // tween uniform.isElevatedPosition to 1
+  const tween = new TWEEN.Tween(material.uniforms.isElevatedPosition)
+    .to({ value: 1.0 }, 1000)
+    .easing(TWEEN.Easing.Quadratic.Out)
+    // .onUpdate(() => { // here we can move the camera accordingly }
+    .start();
 }
 
 /**

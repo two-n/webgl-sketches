@@ -9,18 +9,30 @@
         padding: 0;
       }
       canvas {
-        /* display: block; */
         position: absolute;
       }
-      div#text {
+      div#controls {
+        position: absolute;
+        right: 0px;
         z-index: 1;
-        position: absolute;
-        width: 100vw;
-        height: 100vh;
-        pointer-events: none;
-        display: block;
+        width: 150px;
+        height: 100px;
+        margin: 10px;
       }
-      div.label {
+
+      div.checkbox:before {
+        position: absolute;
+        left: -4px;
+        bottom: -4px;
+        content: '';
+        height: 10px;
+        width: 10px;
+        border: 1px solid #AFAFAF;
+        border-radius: 2px;
+        cursor: pointer;
+        line-height: 12px;
+      }
+      /* div.label {
         position: absolute;
         display: block;
         height: fit-content;
@@ -34,17 +46,16 @@
         font-size: 30px;
         text-anchor: end;
         vertical-align: baseline;
-      }
+      } */
     </style>
     <script type="text/javascript" src="perlin.js"></script>
-    <script type="text/javascript" src="bitmap.js"></script>
     <script
       type="text/javascript"
       src="https://cdn.jsdelivr.net/quicksettings/latest/quicksettings.min.js"
     ></script>
   </head>
   <body>
-    <div id="text"></div>
+    <div id="controls"></div>
     <canvas id="canvas"></canvas>
     <script src="https://d3js.org/d3-selection.v1.min.js"></script>
     <script src="https://d3js.org/d3-array.v2.min.js"></script>
@@ -52,6 +63,6 @@
     <script src="https://d3js.org/d3-format.v1.min.js"></script>
     <script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
     <script src="https://d3js.org/d3-scale.v3.min.js"></script>
-    <script type="text/javascript" src="flow_fields_2_03.js"></script>
+    <script type="text/javascript" src="script.js"></script>
   </body>
 </html>

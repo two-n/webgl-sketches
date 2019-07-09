@@ -2,7 +2,7 @@ const VERT = `
 attribute float scale;
 attribute float customScale;
 attribute vec2 indices;
-attribute vec3 customPosition;
+attribute vec3 startingPosition;
 attribute float isNode;
 
 uniform float count;
@@ -24,20 +24,16 @@ void main() {
   // calculate undulating y
   float dynamic_y = sin((indices.x + count) * 0.3) * 50.0 + sin((indices.y + count) * 0.5) * 50.0;
 
-  // y position tween
-  // float y = position.y > 100.0 ? position.y : dynamic_y;
-  float tweenY = isNode > 0.0 ?
-    interpolate(dynamic_y, elevation, percElevated):// interpolate elevation for nodes
-     dynamic_y;
-
-  // sub in undulating y to set x,y position
-  vec3 pos = vec3(position.x, tweenY, position.z);
+  // nodes: use startingPosition.x, tweenY, startingPosition.z
+  // field: use position.x, dynamic_y,  position.z
+  vec3 pos = isNode > 0.0 ?
+    vec3(startingPosition.x, interpolate(dynamic_y, elevation, percElevated), startingPosition.z):
+    vec3(position.x, dynamic_y, position.z);
 
   // calculate intermediate position between field and elevated
   vec3 tweenPos = isNode > 0.0 ?
-    pos + (customPosition - pos) * percExpanded : // tween position
+    pos + (position - pos) * percExpanded : // tween position
     pos; // else take field position
-
 
   // updates to customScale when radial is expanded
   float tween_scale = isNode > 0.0 ? // if is node
@@ -75,7 +71,8 @@ var config = {
   elevation: 700, // y offset
   camera_default: { x: 2500, y: 500, z: -2500 },
   camera_elevated: { x: 2500, y: 1000, z: -2500 },
-  tree_diameter: 500,
+  tree_diameter: 300, //500,
+  line_segments: 200,
 };
 
 /**
@@ -86,7 +83,6 @@ var selectionArray = [
   "41,5",
   "35,10",
   "31,2",
-
   "28,6",
   "36,1",
   "34,14",
@@ -202,7 +198,7 @@ function init() {
    * RAYCASTER
    */
   raycaster = new THREE.Raycaster();
-  raycaster.params.Points.threshold = 20;
+  raycaster.params.Points.threshold = 100;
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -263,28 +259,30 @@ function render() {
   count += 0.1;
   material.uniforms.count.value = count;
 
-  var scales = field.geometry.attributes.scale.array;
+  // var scales = field.geometry.attributes.scale.array;
 
-  // raycaster.setFromCamera(mouse, camera);
+  raycaster.setFromCamera(mouse, camera);
   // raycaster.params.Points.threshold = view === 2 ? 40 : 20;
-  // field.geometry.boundingBox = null;
-  // const intersects = raycaster.intersectObject(field);
-  // if (intersects.length > 0) {
-  //   if (view === 2) {
-  //     const selectedIntersects = intersects.filter(({ index }) =>
-  //       selection.has(Math.floor(index / AMOUNTX) + "," + (index % AMOUNTY))
-  //     );
-  //     INTERSECTED = selectedIntersects.length
-  //       ? selectedIntersects[0].index
-  //       : null;
-  //     scales[INTERSECTED] = 250; // make dot bigger on mouse hover
-  //   } else {
-  //     INTERSECTED = intersects[0].index;
-  //     scales[INTERSECTED] = 64;
-  //   }
-  // } else if (INTERSECTED !== null) {
-  //   INTERSECTED = null;
-  // }
+  // nodes.geometry.boundingBox = null;
+  const intersects = raycaster.intersectObject(nodes);
+
+  if (intersects.length > 0) {
+    console.log("intersects", intersects);
+    //   if (view === 2) {
+    //     const selectedIntersects = intersects.filter(({ index }) =>
+    //       selection.has(Math.floor(index / AMOUNTX) + "," + (index % AMOUNTY))
+    //     );
+    //     INTERSECTED = selectedIntersects.length
+    //       ? selectedIntersects[0].index
+    //       : null;
+    //     scales[INTERSECTED] = 250; // make dot bigger on mouse hover
+    //   } else {
+    //     INTERSECTED = intersects[0].index;
+    //     scales[INTERSECTED] = 64;
+    //   }
+    // } else if (INTERSECTED !== null) {
+    //   INTERSECTED = null;
+  }
 
   field.geometry.attributes.scale.needsUpdate = true;
 
@@ -318,7 +316,7 @@ function initNodes() {
   var numNodes = descendants.length;
 
   var positions = new Float32Array(numNodes * 3), // 3 positions for each vertex (x, y, z)
-    elevatedPositions = new Float32Array(numNodes * 3); // 3 positions for each vertex (x, y, z)
+    startingPosition = new Float32Array(numNodes * 3); // 3 positions for each vertex (x, y, z)
   var indices = new Float32Array(numNodes * 2); // 2 positions for each vertex (x, y, z)
 
   var scales = new Float32Array(numNodes), // 1 for each
@@ -344,15 +342,15 @@ function initNodes() {
 
     var [ix, iy] = selectionArray[id].split(",");
     // x and z are the same, y is elevated
-    positions[pos_i] = elevatedPositions[pos_i] = xpos(ix); // x
-    positions[pos_i + 1] = 100; // normal y
-    elevatedPositions[pos_i + 1] = config.elevation; // elevated y
-    positions[pos_i + 2] = elevatedPositions[pos_i + 2] = zpos(iy); // z
+    positions[pos_i] = startingPosition[pos_i] = xpos(ix); // x
+    startingPosition[pos_i + 1] = 100; // normal y
+    positions[pos_i + 1] = config.elevation; // elevated y
+    positions[pos_i + 2] = startingPosition[pos_i + 2] = zpos(iy); // z
 
     lineVertices.push(
       new THREE.Vector3(
         positions[pos_i],
-        elevatedPositions[pos_i + 1],
+        positions[pos_i + 1],
         positions[pos_i + 2]
       )
     );
@@ -373,16 +371,14 @@ function initNodes() {
         if (d.data.data.id != e.data.data.id) {
           const theta = e.x;
 
-          positions[p] = positions[pos_i]; // x
-          elevatedPositions[p] =
-            positions[pos_i] + Math.cos(theta + Math.PI / 2) * e.y; // radial x
+          startingPosition[p] = positions[pos_i]; // x
+          positions[p] = positions[pos_i] + Math.cos(theta + Math.PI / 2) * e.y; // radial x
+          startingPosition[p + 1] = positions[pos_i + 1]; // y
+          positions[p + 1] =
+            positions[pos_i + 1] + Math.sin(theta - Math.PI / 2) * e.y; // radial y
 
-          positions[p + 1] = positions[pos_i + 1]; // y
-          elevatedPositions[p + 1] =
-            elevatedPositions[pos_i + 1] + Math.sin(theta - Math.PI / 2) * e.y; // radial y
-
-          positions[p + 2] = positions[pos_i + 2]; //z
-          elevatedPositions[p + 2] =
+          startingPosition[p + 2] = positions[pos_i + 2]; //z
+          positions[p + 2] =
             positions[pos_i + 2] + Math.cos(theta + Math.PI / 2) * d.y; // radial z
 
           scales[e.data.data.id] = 0.0;
@@ -396,8 +392,8 @@ function initNodes() {
   // positions
   geometry.addAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.addAttribute(
-    "customPosition",
-    new THREE.BufferAttribute(elevatedPositions, 3)
+    "startingPosition",
+    new THREE.BufferAttribute(startingPosition, 3)
   );
   // indices
   geometry.addAttribute("indices", new THREE.BufferAttribute(indices, 2));
@@ -414,7 +410,7 @@ function initNodes() {
   scene.add(nodes);
 
   var curve = new THREE.CatmullRomCurve3(lineVertices),
-    curvePoints = curve.getPoints(100),
+    curvePoints = curve.getPoints(config.line_segments),
     lineGeometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
 
   line = new THREE.Line(lineGeometry, lineMaterial);
@@ -521,7 +517,7 @@ function transition_drawLine() {
   // connect L1 dots together
   //https://stackoverflow.com/a/31411794 - tween setDrawRange
   new TWEEN.Tween(line.geometry.drawRange)
-    .to({ count: 100 }, 2000) // abstract this number
+    .to({ count: config.line_segments }, 2000) // abstract this number
     .easing(TWEEN.Easing.Quadratic.In)
     .start();
 }

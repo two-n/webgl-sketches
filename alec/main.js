@@ -12,6 +12,7 @@ void main() {
 
   // stop undulating when points are elevated
   float y = position.y > 100.0 ? position.y : dynamic_y;
+  // float y = position.y;
 
   // sub in undulating y to set x,y position
   vec3 pos = vec3(position.x, y, position.z);
@@ -21,6 +22,8 @@ void main() {
     pos; // else take field position
 
   vec4 mvPosition = modelViewMatrix * vec4( tweenPos, 1.0 );
+
+  // TODO: update scale size with elevation change
   gl_PointSize = scale * ( 500.0 / - mvPosition.z );
   gl_Position = projectionMatrix * mvPosition;
 }
@@ -44,10 +47,13 @@ var SEPARATION = 100,
 var intcpt = 2500;
 var config = {
   scale_default: 32,
-  scale_L1: 40,
-  scale_L2: 30,
+  scale_L1: 100,
+  scale_L2: 50,
   scale_L3: 20,
-  elevation: 400, // y offset
+  elevation: 700, // y offset
+  camera_default: { x: 2500, y: 500, z: -2500 },
+  camera_elevated: { x: 2500, y: 1000, z: -2500 },
+  tree_diameter: 500,
 };
 
 /**
@@ -87,13 +93,20 @@ var selectionTree = d3
   ["41,5", "40,7"],
 ]);
 
+// var tree = data =>
+//   d3
+//     .tree()
+//     .size([Math.PI, window.innerHeight / 3])
+//     .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth)(
+//     d3.hierarchy(data)
+//   );
+
 var tree = data =>
   d3
     .tree()
-    .size([Math.PI, window.innerHeight / 3])
-    .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth)(
-    d3.hierarchy(data)
-  );
+    .size([Math.PI, config.tree_diameter])
+    .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth)(data);
+
 var radialTree = new Map();
 
 /**
@@ -131,9 +144,9 @@ d3.json("data.json")
       .id(d => d["ref"])
       .parentId(d => d["Parent Node ID"])([
       { ["ref"]: "root", ["Parent Node ID"]: "" }, // append root node
-      ...data["Fan Journey"].filter(
-        d => d["Node Name"] && d["Node Hierarchy"] < 4
-      ),
+      ...data["Fan Journey"]
+        .filter(d => d["Node Name"] && d["Node Hierarchy"] < 4)
+        .map((d, i) => ({ ...d, id: i })),
     ]);
 
     fanJourney = d3.hierarchy(stratefied);
@@ -160,9 +173,9 @@ function init() {
     1, // near field
     10000 // far field
   );
-  camera.position.x = 2500;
-  camera.position.y = 500;
-  camera.position.z = -2500;
+  camera.position.x = config.camera_default.x;
+  camera.position.y = config.camera_default.y;
+  camera.position.z = config.camera_default.z;
 
   /**
    *  SCENE
@@ -205,20 +218,6 @@ function init() {
   initNodes();
 
   /**
-   * CALC FINAL RADIAL TREE POSITIONS
-   */
-  tree(selectionTree)
-    .descendants()
-    .reverse()
-    .forEach(d => {
-      const theta = d.x;
-      const x = windowHalfX + Math.cos(theta - Math.PI / 2) * d.y;
-      const y = windowHalfY + Math.sin(theta - Math.PI / 2) * d.y;
-      const worldVector = get3Dfrom2d(x, y, 1000, camera, raycaster);
-      radialTree.set(d.data.id, worldVector);
-    });
-
-  /**
    * LINE GEOMETRY
    */
   var lineMaterial = new THREE.LineBasicMaterial({
@@ -253,26 +252,26 @@ function render() {
 
   var scales = field.geometry.attributes.scale.array;
 
-  raycaster.setFromCamera(mouse, camera);
-  raycaster.params.Points.threshold = view === 2 ? 40 : 20;
-  field.geometry.boundingBox = null;
-  const intersects = raycaster.intersectObject(field);
-  if (intersects.length > 0) {
-    if (view === 2) {
-      const selectedIntersects = intersects.filter(({ index }) =>
-        selection.has(Math.floor(index / AMOUNTX) + "," + (index % AMOUNTY))
-      );
-      INTERSECTED = selectedIntersects.length
-        ? selectedIntersects[0].index
-        : null;
-      scales[INTERSECTED] = 250; // make dot bigger on mouse hover
-    } else {
-      INTERSECTED = intersects[0].index;
-      scales[INTERSECTED] = 64;
-    }
-  } else if (INTERSECTED !== null) {
-    INTERSECTED = null;
-  }
+  // raycaster.setFromCamera(mouse, camera);
+  // raycaster.params.Points.threshold = view === 2 ? 40 : 20;
+  // field.geometry.boundingBox = null;
+  // const intersects = raycaster.intersectObject(field);
+  // if (intersects.length > 0) {
+  //   if (view === 2) {
+  //     const selectedIntersects = intersects.filter(({ index }) =>
+  //       selection.has(Math.floor(index / AMOUNTX) + "," + (index % AMOUNTY))
+  //     );
+  //     INTERSECTED = selectedIntersects.length
+  //       ? selectedIntersects[0].index
+  //       : null;
+  //     scales[INTERSECTED] = 250; // make dot bigger on mouse hover
+  //   } else {
+  //     INTERSECTED = intersects[0].index;
+  //     scales[INTERSECTED] = 64;
+  //   }
+  // } else if (INTERSECTED !== null) {
+  //   INTERSECTED = null;
+  // }
 
   field.geometry.attributes.scale.needsUpdate = true;
 
@@ -300,11 +299,13 @@ function ypos(x, y, c) {
 function initNodes() {
   var descendants = fanJourney.descendants().filter(d => d["ref"] != "root");
   var numNodes = descendants.length;
-  var positions = new Float32Array(numNodes * 3); // 3 positions for each vertex (x, y, z)
+
+  var positions = new Float32Array(numNodes * 3), // 3 positions for each vertex (x, y, z)
+    elevatedPositions = new Float32Array(numNodes * 3); // 3 positions for each vertex (x, y, z)
   var indices = new Float32Array(numNodes * 2); // 2 positions for each vertex (x, y, z)
-  var scales = new Float32Array(numNodes); // 1 for each
-  var elevatedPositions = new Float32Array(numNodes * 3); // 3 positions for each vertex (x, y, z)
-  var elevatedScales = new Float32Array(numNodes); // 1 for each
+
+  var scales = new Float32Array(numNodes), // 1 for each
+    elevatedScales = new Float32Array(numNodes); // 1 for each
 
   /**
    * go through all the fanJourney nodes and assign:
@@ -314,37 +315,47 @@ function initNodes() {
    * (4) `customScale` - L1 are larger, descendents have relative size
    * */
 
-  var i = 0,
-    k = 0,
-    j = 0;
-  for (var i_nodes = 0; i_nodes < numNodes; i_nodes++) {
-    // first four, pluck off of selection array
-    var currentNode = descendants[i_nodes];
-    if (currentNode.data.data["Node Hierarchy"] === 1) {
-      var [ix, iy] = selectionArray[i_nodes].split(",");
+  // calculate positions
+  fanJourney.children.map(d => {
+    console.log("d", d);
+    var id = d.data.data.id,
+      pos_i = id * 3,
+      ind_i = id * 2,
+      scale_i = id;
 
-      // x and z are the same, y is elevated
-      positions[i] = elevatedPositions[i] = xpos(ix); // x
-      positions[i + 2] = elevatedPositions[i + 2] = zpos(iy); // z
+    var [ix, iy] = selectionArray[id].split(",");
+    // x and z are the same, y is elevated
+    positions[pos_i] = elevatedPositions[pos_i] = xpos(ix); // x
+    positions[pos_i + 2] = elevatedPositions[pos_i + 2] = zpos(iy); // z
 
-      positions[i + 1] = 100; // normal y
-      elevatedPositions[i + 1] = config.elevation; // elevated y
+    positions[pos_i + 1] = 100; // normal y
+    elevatedPositions[pos_i + 1] = config.elevation; // elevated y
 
-      // used for calculating sine movements
-      indices[k] = ix;
-      indices[k + 1] = iy;
+    // used for calculating sine movements
+    indices[ind_i] = ix;
+    indices[ind_i + 1] = iy;
 
-      scales[j] = config.scale_L1;
-    } else {
-      console.log("currentNode.data.data", currentNode.data.data);
-      // TODO: calculate satellite node positions
-      // scales[j] = 32;
-    }
+    scales[scale_i] = config.scale_L1;
 
-    i += 3;
-    k += 2;
-    j++;
-  }
+    // calculate radial tree around L1 nodes
+    tree(d)
+      .descendants()
+      .reverse()
+      .forEach(e => {
+        var p = e.data.data.id * 3;
+        console.log("e.data.data.id,p", e.data.data.id, p);
+        if (d.data.data.id != e.data.data.id) {
+          const theta = e.x;
+          positions[p] = positions[pos_i] + Math.cos(theta + Math.PI / 2) * e.y; // x
+          positions[p + 1] =
+            elevatedPositions[pos_i + 1] + Math.sin(theta - Math.PI / 2) * e.y; //y
+          positions[p + 2] =
+            positions[pos_i + 2] + Math.cos(theta + Math.PI / 2) * d.y; // z
+
+          scales[e.data.data.id] = config.scale_L2;
+        }
+      });
+  });
 
   //  geometry
   var geometry = new THREE.BufferGeometry();
@@ -423,7 +434,13 @@ function onKeyPress(e) {
  *  nodes: field position, default scale
  *  camera: starting position
  */
-function transition_view0() {}
+function transition_view0() {
+  new TWEEN.Tween(camera.position)
+    .to(config.camera_default, 1500)
+    .delay(1000)
+    .easing(TWEEN.Easing.Quadratic.In)
+    .start();
+}
 
 /**
  * View 1: L1 dots rise `above field
@@ -433,11 +450,17 @@ function transition_view0() {}
  */
 function transition_view1() {
   // tween uniform.percElevated to 1
-  const tween = new TWEEN.Tween(material.uniforms.percElevated)
+  new TWEEN.Tween(material.uniforms.percElevated)
     .to({ value: 1.0 }, 1000)
     .easing(TWEEN.Easing.Quadratic.Out)
-    // .onUpdate(() => { // here we can move the camera accordingly }
     .start();
+
+  // // update camera angle
+  // new TWEEN.Tween(camera.position)
+  //   .to(config.camera_elevated, 1500)
+  //   .delay(1000)
+  //   .easing(TWEEN.Easing.Quadratic.In)
+  //   .start();
 }
 
 /**

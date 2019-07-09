@@ -198,7 +198,7 @@ function init() {
    * RAYCASTER
    */
   raycaster = new THREE.Raycaster();
-  raycaster.params.Points.threshold = 100;
+  raycaster.params.Points.threshold = 20;
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -239,7 +239,10 @@ function init() {
   window.addEventListener(
     "click",
     () => {
-      if (view === 2 && INTERSECTED) console.log(INTERSECTED);
+      if (view >= 2 && INTERSECTED) {
+        console.log(INTERSECTED);
+        zoomCameraTo(INTERSECTED);
+      }
     },
     false
   );
@@ -267,8 +270,10 @@ function render() {
   const intersects = raycaster.intersectObject(nodes);
 
   if (intersects.length > 0) {
-    console.log("intersects", intersects);
-    //   if (view === 2) {
+    if (view >= 2) {
+      // console.log("intersects", intersects);
+      INTERSECTED = intersects[0].point;
+    }
     //     const selectedIntersects = intersects.filter(({ index }) =>
     //       selection.has(Math.floor(index / AMOUNTX) + "," + (index % AMOUNTY))
     //     );
@@ -279,7 +284,6 @@ function render() {
     //   } else {
     //     INTERSECTED = intersects[0].index;
     //     scales[INTERSECTED] = 64;
-    //   }
     // } else if (INTERSECTED !== null) {
     //   INTERSECTED = null;
   }
@@ -533,6 +537,15 @@ function transition_expandRadial() {
   new TWEEN.Tween(camera.position)
     .to(config.camera_elevated, 1500)
     .delay(1000)
+    .easing(TWEEN.Easing.Quadratic.In)
+    .start();
+}
+
+function zoomCameraTo(vec3) {
+  // camera.lookAt(vec3);
+
+  new TWEEN.Tween(camera.position)
+    .to({ x: vec3.x + 400, y: vec3.y, z: vec3.z - 400 }, 1500)
     .easing(TWEEN.Easing.Quadratic.In)
     .start();
 }

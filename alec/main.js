@@ -4,13 +4,22 @@ attribute vec2 indices;
 attribute vec3 customPosition;
 
 uniform float count;
-uniform float isElevatedPosition;
+uniform float percElevated; // percentage elevated
 
 void main() {
+  // calculate undulating y
   float dynamic_y = sin((indices.x + count) * 0.3) * 50.0 + sin((indices.y + count) * 0.5) * 50.0;
+
+  // stop undulating when points are elevated
   float y = position.y > 100.0 ? position.y : dynamic_y;
+
+  // sub in undulating y to set x,y position
   vec3 pos = vec3(position.x, y, position.z);
-  vec3 tweenPos = pos + (customPosition - pos) * isElevatedPosition;
+  // calculate intermediate position between field and elevated
+  vec3 tweenPos = (customPosition.x > 0.0) ? // if there is customPosition
+    pos + (customPosition - pos) * percElevated : // tween
+    pos; // else take field position
+
   vec4 mvPosition = modelViewMatrix * vec4( tweenPos, 1.0 );
   gl_PointSize = scale * ( 500.0 / - mvPosition.z );
   gl_Position = projectionMatrix * mvPosition;
@@ -185,7 +194,7 @@ function init() {
   material = new THREE.ShaderMaterial({
     uniforms: {
       color: { value: new THREE.Color(0xffffff) },
-      isElevatedPosition: { value: 0.0 }, // percent elevated, used in shader to TWEEN values
+      percElevated: { value: 0.0 }, // percent elevated, used in shader to TWEEN values
       count: { value: 0.0 }, // count that ticks up on each render
     },
     vertexShader: VERT,
@@ -404,11 +413,7 @@ function onKeyPress(e) {
     view = (view + 1) % 3;
     if (view === 1) {
       transition_view1();
-      // setTimeout(() => drawHTMLEls(), 5000);
     }
-    // else if (document.querySelector(".ui-nodes").children.length) {
-    //   destroyHTML();
-    // }
   }
 }
 
@@ -427,8 +432,8 @@ function transition_view0() {}
  *  camera: more birds-eye-view vantage point
  */
 function transition_view1() {
-  // tween uniform.isElevatedPosition to 1
-  const tween = new TWEEN.Tween(material.uniforms.isElevatedPosition)
+  // tween uniform.percElevated to 1
+  const tween = new TWEEN.Tween(material.uniforms.percElevated)
     .to({ value: 1.0 }, 1000)
     .easing(TWEEN.Easing.Quadratic.Out)
     // .onUpdate(() => { // here we can move the camera accordingly }

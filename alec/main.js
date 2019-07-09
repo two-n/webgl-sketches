@@ -1,30 +1,52 @@
 const VERT = `
 attribute float scale;
+attribute float customScale;
 attribute vec2 indices;
 attribute vec3 customPosition;
+attribute float isNode;
 
 uniform float count;
+uniform float elevation;
 uniform float percElevated; // percentage elevated
+uniform float percExpanded; // percentage expanded (for radial layout)
+
+// interpolation for floats
+float interpolate(float start, float end, float perc) {
+	return (start + (end - start) * perc);
+}
+
+// dynamically scale field points
+float scaleField(float scale, float ix, float iy, float count) {
+	return (sin((ix + count) * 0.3) + 1.0) * 8.0 + (sin((iy + count) * 0.5) + 1.0) * 8.0;
+}
 
 void main() {
   // calculate undulating y
   float dynamic_y = sin((indices.x + count) * 0.3) * 50.0 + sin((indices.y + count) * 0.5) * 50.0;
 
-  // stop undulating when points are elevated
-  float y = position.y > 100.0 ? position.y : dynamic_y;
-  // float y = position.y;
+  // y position tween
+  // float y = position.y > 100.0 ? position.y : dynamic_y;
+  float tweenY = isNode > 0.0 ?
+    interpolate(dynamic_y, elevation, percElevated):// interpolate elevation for nodes
+     dynamic_y;
 
   // sub in undulating y to set x,y position
-  vec3 pos = vec3(position.x, y, position.z);
+  vec3 pos = vec3(position.x, tweenY, position.z);
+
   // calculate intermediate position between field and elevated
-  vec3 tweenPos = (customPosition.x > 0.0) ? // if there is customPosition
-    pos + (customPosition - pos) * percElevated : // tween
+  vec3 tweenPos = isNode > 0.0 ?
+    pos + (customPosition - pos) * percExpanded : // tween position
     pos; // else take field position
 
-  vec4 mvPosition = modelViewMatrix * vec4( tweenPos, 1.0 );
 
-  // TODO: update scale size with elevation change
-  gl_PointSize = scale * ( 500.0 / - mvPosition.z );
+  // updates to customScale when radial is expanded
+  float tween_scale = isNode > 0.0 ? // if is node
+    interpolate(scale, customScale, percExpanded):// node scale based on whether or not expanded
+    interpolate(scale, customScale, percElevated);// field scale based on whether or not elevated
+
+  // TODO: still need to deal with L1 scale change
+  vec4 mvPosition = modelViewMatrix * vec4( tweenPos, 1.0 );
+  gl_PointSize = tween_scale * ( 500.0 / - mvPosition.z );
   gl_Position = projectionMatrix * mvPosition;
 }
 `;
@@ -92,14 +114,6 @@ var selectionTree = d3
   ["41,5", "45,5"],
   ["41,5", "40,7"],
 ]);
-
-// var tree = data =>
-//   d3
-//     .tree()
-//     .size([Math.PI, window.innerHeight / 3])
-//     .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth)(
-//     d3.hierarchy(data)
-//   );
 
 var tree = data =>
   d3
@@ -207,7 +221,9 @@ function init() {
   material = new THREE.ShaderMaterial({
     uniforms: {
       color: { value: new THREE.Color(0xffffff) },
+      elevation: { value: config.elevation },
       percElevated: { value: 0.0 }, // percent elevated, used in shader to TWEEN values
+      percExpanded: { value: 0.0 }, // percent elevated, used in shader to TWEEN values
       count: { value: 0.0 }, // count that ticks up on each render
     },
     vertexShader: VERT,
@@ -305,7 +321,9 @@ function initNodes() {
   var indices = new Float32Array(numNodes * 2); // 2 positions for each vertex (x, y, z)
 
   var scales = new Float32Array(numNodes), // 1 for each
-    elevatedScales = new Float32Array(numNodes); // 1 for each
+    customScales = new Float32Array(numNodes); // 1 for each
+
+  var isNode = new Float32Array(numNodes).fill(1.0); // flag for nodes vs. field
 
   /**
    * go through all the fanJourney nodes and assign:
@@ -317,7 +335,6 @@ function initNodes() {
 
   // calculate positions
   fanJourney.children.map(d => {
-    console.log("d", d);
     var id = d.data.data.id,
       pos_i = id * 3,
       ind_i = id * 2,
@@ -335,7 +352,8 @@ function initNodes() {
     indices[ind_i] = ix;
     indices[ind_i + 1] = iy;
 
-    scales[scale_i] = config.scale_L1;
+    scales[scale_i] = config.scale_default;
+    customScales[scale_i] = config.scale_L1;
 
     // calculate radial tree around L1 nodes
     tree(d)
@@ -343,16 +361,23 @@ function initNodes() {
       .reverse()
       .forEach(e => {
         var p = e.data.data.id * 3;
-        console.log("e.data.data.id,p", e.data.data.id, p);
         if (d.data.data.id != e.data.data.id) {
           const theta = e.x;
-          positions[p] = positions[pos_i] + Math.cos(theta + Math.PI / 2) * e.y; // x
-          positions[p + 1] =
-            elevatedPositions[pos_i + 1] + Math.sin(theta - Math.PI / 2) * e.y; //y
-          positions[p + 2] =
-            positions[pos_i + 2] + Math.cos(theta + Math.PI / 2) * d.y; // z
 
-          scales[e.data.data.id] = config.scale_L2;
+          positions[p] = positions[pos_i]; // x
+          elevatedPositions[p] =
+            positions[pos_i] + Math.cos(theta + Math.PI / 2) * e.y; // radial x
+
+          positions[p + 1] = positions[pos_i + 1]; // y
+          elevatedPositions[p + 1] =
+            elevatedPositions[pos_i + 1] + Math.sin(theta - Math.PI / 2) * e.y; // radial y
+
+          positions[p + 2] = positions[pos_i + 2]; //z
+          elevatedPositions[p + 2] =
+            positions[pos_i + 2] + Math.cos(theta + Math.PI / 2) * d.y; // radial z
+
+          scales[e.data.data.id] = 0.0;
+          customScales[e.data.data.id] = config.scale_L2;
         }
       });
   });
@@ -371,8 +396,9 @@ function initNodes() {
   geometry.addAttribute("scale", new THREE.BufferAttribute(scales, 1));
   geometry.addAttribute(
     "customScale",
-    new THREE.BufferAttribute(elevatedScales, 1)
+    new THREE.BufferAttribute(customScales, 1)
   );
+  geometry.addAttribute("isNode", new THREE.BufferAttribute(isNode, 1));
 
   nodes = new THREE.Points(geometry, material);
   nodes.name = "nodes";
@@ -383,7 +409,10 @@ function initField() {
   var numParticles = AMOUNTX * AMOUNTY;
   var positions = new Float32Array(numParticles * 3); // 3 positions for each vertex (x, y, z)
   var indices = new Float32Array(numParticles * 2); // 2 positions for each vertex (x, y, z)
-  var scales = new Float32Array(numParticles); // 1 for each, scale number
+  var scales = new Float32Array(numParticles).fill(config.scale_default); // 1 for each, scale number
+  var customScales = new Float32Array(numParticles).fill(
+    config.scale_default / 3
+  ); // smaller scale when nodes are elevated
   var i = 0,
     k = 0,
     j = 0;
@@ -398,8 +427,6 @@ function initField() {
       indices[k] = ix;
       indices[k + 1] = iy;
 
-      scales[j] = 32;
-
       i += 3;
       k += 2;
       j++;
@@ -411,6 +438,10 @@ function initField() {
   geometry.addAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.addAttribute("indices", new THREE.BufferAttribute(indices, 2));
   geometry.addAttribute("scale", new THREE.BufferAttribute(scales, 1));
+  geometry.addAttribute(
+    "customScale",
+    new THREE.BufferAttribute(customScales, 1)
+  );
 
   field = new THREE.Points(geometry, material);
   field.name = "field";
@@ -421,20 +452,34 @@ function onKeyPress(e) {
   if (e.keyCode === 32) {
     // space bar
     transitionStart = count;
-    view = (view + 1) % 3;
-    if (view === 1) {
-      transition_view1();
+    view = (view + 1) % 5;
+    console.log("view", view);
+    switch (view) {
+      case 0:
+        console.log("case0");
+        transition_default();
+        break;
+      case 1:
+        console.log("case1");
+        transition_scaleL1Dots();
+        break;
+      case 2:
+        console.log("case2");
+        transition_elevateNodes();
+        break;
+      case 3:
+        console.log("case3");
+        transition_drawLine();
+        break;
+      case 4:
+        console.log("case4");
+        transition_expandRadial();
+        break;
     }
   }
 }
 
-/**
- * View O: all dots are in the same undulating field
- *  field: normal position, default scale
- *  nodes: field position, default scale
- *  camera: starting position
- */
-function transition_view0() {
+function transition_default() {
   new TWEEN.Tween(camera.position)
     .to(config.camera_default, 1500)
     .delay(1000)
@@ -442,25 +487,35 @@ function transition_view0() {
     .start();
 }
 
-/**
- * View 1: L1 dots rise `above field
- *  field: normal position, lightened scale
- *  nodes: elevated position, larger scale
- *  camera: more birds-eye-view vantage point
- */
-function transition_view1() {
-  // tween uniform.percElevated to 1
+function transition_scaleL1Dots() {
+  // Tween scale of L1 dots from default -> scale_L1
+}
+
+function transition_elevateNodes() {
+  // Bring up nodes from field
   new TWEEN.Tween(material.uniforms.percElevated)
     .to({ value: 1.0 }, 1000)
     .easing(TWEEN.Easing.Quadratic.Out)
     .start();
+}
 
-  // // update camera angle
-  // new TWEEN.Tween(camera.position)
-  //   .to(config.camera_elevated, 1500)
-  //   .delay(1000)
-  //   .easing(TWEEN.Easing.Quadratic.In)
-  //   .start();
+function transition_drawLine() {
+  // connect L1 dots together
+}
+
+function transition_expandRadial() {
+  // tween uniform.percElevated to 1
+  new TWEEN.Tween(material.uniforms.percExpanded)
+    .to({ value: 1.0 }, 1000)
+    .easing(TWEEN.Easing.Quadratic.Out)
+    .start();
+
+  // update camera angle
+  new TWEEN.Tween(camera.position)
+    .to(config.camera_elevated, 1500)
+    .delay(1000)
+    .easing(TWEEN.Easing.Quadratic.In)
+    .start();
 }
 
 /**

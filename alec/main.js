@@ -82,10 +82,11 @@ var config = {
  * DATA & TREE STRUCTURE
  */
 var selectionArray = [
-  "31,2",
-  "35,10",
-  "41,5",
   "45,14",
+  "41,5",
+  "35,10",
+  "31,2",
+
   "28,6",
   "36,1",
   "34,14",
@@ -131,10 +132,11 @@ var selection = new Set(selectionArray),
   fanJourney;
 var container, stats;
 var camera, scene, renderer, raycaster, controls;
-var material, material2;
+var material, material2, lineMaterial;
 
 var field,
   nodes,
+  line,
   lines = {},
   count = 0;
 
@@ -230,15 +232,10 @@ function init() {
     fragmentShader: FRAG,
   });
 
+  lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff }); //red: 0xff0000
+
   initField();
   initNodes();
-
-  /**
-   * LINE GEOMETRY
-   */
-  var lineMaterial = new THREE.LineBasicMaterial({
-    color: new THREE.Color(0xffffff),
-  });
 
   document.addEventListener("mousemove", onDocumentMouseMove, false);
   window.addEventListener("resize", onWindowResize, false);
@@ -312,6 +309,10 @@ function ypos(x, y, c) {
   return Math.sin((x + c) * 0.3) * 50 + Math.sin((y + c) * 0.5) * 50;
 }
 
+/**
+ * creates node points geometry and line connecting them
+ * pre-calculates all positions
+ */
 function initNodes() {
   var descendants = fanJourney.descendants().filter(d => d["ref"] != "root");
   var numNodes = descendants.length;
@@ -325,6 +326,7 @@ function initNodes() {
 
   var isNode = new Float32Array(numNodes).fill(1.0); // flag for nodes vs. field
 
+  var lineVertices = [];
   /**
    * go through all the fanJourney nodes and assign:
    * (1) initial `positions` (on the grid)
@@ -343,10 +345,17 @@ function initNodes() {
     var [ix, iy] = selectionArray[id].split(",");
     // x and z are the same, y is elevated
     positions[pos_i] = elevatedPositions[pos_i] = xpos(ix); // x
-    positions[pos_i + 2] = elevatedPositions[pos_i + 2] = zpos(iy); // z
-
     positions[pos_i + 1] = 100; // normal y
     elevatedPositions[pos_i + 1] = config.elevation; // elevated y
+    positions[pos_i + 2] = elevatedPositions[pos_i + 2] = zpos(iy); // z
+
+    lineVertices.push(
+      new THREE.Vector3(
+        positions[pos_i],
+        elevatedPositions[pos_i + 1],
+        positions[pos_i + 2]
+      )
+    );
 
     // used for calculating sine movements
     indices[ind_i] = ix;
@@ -403,6 +412,15 @@ function initNodes() {
   nodes = new THREE.Points(geometry, material);
   nodes.name = "nodes";
   scene.add(nodes);
+
+  var curve = new THREE.CatmullRomCurve3(lineVertices),
+    curvePoints = curve.getPoints(100),
+    lineGeometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
+
+  line = new THREE.Line(lineGeometry, lineMaterial);
+  lineGeometry.verticesNeedUpdate = true;
+  lineGeometry.setDrawRange(0, 1);
+  scene.add(line);
 }
 
 function initField() {
@@ -501,6 +519,11 @@ function transition_elevateNodes() {
 
 function transition_drawLine() {
   // connect L1 dots together
+  //https://stackoverflow.com/a/31411794 - tween setDrawRange
+  new TWEEN.Tween(line.geometry.drawRange)
+    .to({ count: 100 }, 2000) // abstract this number
+    .easing(TWEEN.Easing.Quadratic.In)
+    .start();
 }
 
 function transition_expandRadial() {

@@ -66,12 +66,12 @@ var intcpt = 2500;
 var config = {
   scale_default: 32,
   scale_L1: 100,
-  scale_L2: 50,
+  scale_L2: 25,
   scale_L3: 20,
   elevation: 700, // y offset
   camera_default: { x: 2500, y: 500, z: -2500 },
-  camera_elevated: { x: 2500, y: 1000, z: -2500 },
-  tree_diameter: 300, //500,
+  camera_elevated: { x: 1500, y: 1000, z: -2750 },
+  tree_diameter: 200, //500,
   line_segments: 200,
 };
 
@@ -467,6 +467,11 @@ function initField() {
 }
 
 function onKeyPress(e) {
+  if (e.keyCode === 91) {
+    console.log("case4");
+    transition_expandRadial();
+  }
+
   if (e.keyCode === 32) {
     // space bar
     transitionStart = count;
@@ -539,14 +544,26 @@ function transition_expandRadial() {
     .delay(1000)
     .easing(TWEEN.Easing.Quadratic.In)
     .start();
+
+  new TWEEN.Tween(controls.target)
+    .to(new THREE.Vector3(), 1500)
+    .delay(1500)
+    .easing(TWEEN.Easing.Quadratic.In)
+    .start();
 }
 
 function zoomCameraTo(vec3) {
   // camera.lookAt(vec3);
+  // TODO: figure out how to make this responsive to different sizes
 
   new TWEEN.Tween(camera.position)
-    .to({ x: vec3.x + 400, y: vec3.y, z: vec3.z - 400 }, 1500)
+    .to({ x: vec3.x, y: vec3.y + 100, z: vec3.z - 500 / camera.aspect }, 1500)
     .easing(TWEEN.Easing.Quadratic.In)
+    .start();
+
+  new TWEEN.Tween(controls.target)
+    .to(vec3, 1500) // TODO adjust lookat vector to make it to the right of center
+    .easing(TWEEN.Easing.Quadratic.Out)
     .start();
 }
 

@@ -262,6 +262,16 @@ function render() {
   count += 0.1;
   material.uniforms.count.value = count;
 
+  // draw lines for radial diagram using percExpanded uniform
+  scene.children
+    .filter(d => d.name === "nodeLine")
+    .map(d => {
+      d.geometry.setDrawRange(
+        0,
+        material.uniforms.percExpanded.value * config.line_segments
+      );
+    });
+
   raycaster.setFromCamera(mouse, camera);
   const intersects = raycaster.intersectObject(nodes);
 
@@ -348,14 +358,13 @@ function initNodes() {
       .descendants()
       .reverse()
       .forEach(e => {
-        console.log("e", e);
         var p = e.data.data.id * 3;
 
         // if not L1 parent
         if (d.data.data.id != e.data.data.id) {
           const radialPosition = calcRadialPosition(e.x, e.y, l1Position);
           const parentRadialPosition =
-            e.height === 0 // check heirarchy level
+            e.depth === 2 // check heirarchy level
               ? l1Position
               : calcRadialPosition(e.parent.x, e.parent.y, l1Position);
 
@@ -372,6 +381,12 @@ function initNodes() {
           customScales[e.data.data.id] = config.scale_L2;
 
           // calculate self vert and parent vert and create line, add to scene
+          const nodeLine = createCurveLine(
+            [parentRadialPosition, radialPosition],
+            lineMaterial,
+            "nodeLine"
+          );
+          scene.add(nodeLine);
         }
       });
   });
@@ -397,19 +412,6 @@ function initNodes() {
   nodes = new THREE.Points(geometry, material);
   nodes.name = "nodes";
   scene.add(nodes);
-
-  function createCurveLine(lineVertices, material, name = "line") {
-    var curve = new THREE.CatmullRomCurve3(lineVertices),
-      curvePoints = curve.getPoints(config.line_segments),
-      lineGeometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
-
-    lineGeometry.verticesNeedUpdate = true;
-    lineGeometry.setDrawRange(0, 1);
-
-    const curvedLine = new THREE.Line(lineGeometry, material);
-    curvedLine.name = name;
-    return curvedLine;
-  }
 
   line = createCurveLine(lineVertices, lineMaterial, "rootLine");
   scene.add(line);
@@ -662,6 +664,19 @@ function calcRadialPosition(theta, y, origin) {
     origin.y + Math.sin(theta - Math.PI / 2) * y,
     origin.z + Math.cos(theta + Math.PI / 2) * y
   );
+}
+
+function createCurveLine(lineVertices, material, name = "line") {
+  var curve = new THREE.CatmullRomCurve3(lineVertices),
+    curvePoints = curve.getPoints(config.line_segments),
+    lineGeometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
+
+  lineGeometry.verticesNeedUpdate = true;
+  lineGeometry.setDrawRange(0, 1);
+
+  const curvedLine = new THREE.Line(lineGeometry, material);
+  curvedLine.name = name;
+  return curvedLine;
 }
 
 // previous render logic below:

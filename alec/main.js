@@ -64,7 +64,7 @@ var SEPARATION = 100,
   AMOUNTY = 50;
 var intcpt = 2500;
 var config = {
-  scale_default: 32,
+  scale_default: 25,
   scale_L1: 100,
   scale_L2: 25,
   scale_L3: 20,
@@ -127,7 +127,7 @@ var radialTree = new Map();
 var selection = new Set(selectionArray),
   fanJourney;
 var container, stats;
-var camera, scene, renderer, raycaster, controls;
+var camera, scene, renderer, labelRenderer, raycaster, controls;
 var material, material2, lineMaterial;
 
 var field,
@@ -199,10 +199,25 @@ function init() {
    */
   raycaster = new THREE.Raycaster();
   raycaster.params.Points.threshold = 20;
+
+  /**
+   * RENDERERS
+   */
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   container.appendChild(renderer.domElement);
+
+  labelRenderer = new THREE.CSS2DRenderer();
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.domElement.style.position = "absolute";
+  labelRenderer.domElement.style.top = 0;
+  document.body.appendChild(labelRenderer.domElement);
+
+  // STATS uncomment
+  // stats = new Stats();
+  // stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+  // document.body.appendChild(stats.dom);
 
   /**
    * CONTROLS
@@ -285,6 +300,7 @@ function render() {
 
   material.uniforms.count.needsUpdate = true;
   renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
 }
 
 /**
@@ -323,6 +339,9 @@ function initNodes() {
 
   var lineVertices = [];
 
+  var geometry = new THREE.BufferGeometry();
+  nodes = new THREE.Points(geometry, material);
+
   // calculate positions
   fanJourney.children.map(d => {
     var id = d.data.data.id,
@@ -344,14 +363,32 @@ function initNodes() {
       positions[pos_i + 2]
     );
 
-    lineVertices.push(l1Position);
-
     // used for calculating sine movements
     indices[ind_i] = ix;
     indices[ind_i + 1] = iy;
 
     scales[scale_i] = config.scale_default;
     customScales[scale_i] = config.scale_L1;
+
+    lineVertices.push(l1Position);
+
+    function createLabel(d, l1Position, className = "label") {
+      const labelDiv = document.createElement("div");
+      labelDiv.className = className;
+      labelDiv.textContent = d.data.data["Node Name"];
+      // labelDiv.style.marginTop = "-1em";
+
+      const label = new THREE.CSS2DObject(labelDiv);
+      label.position.set(
+        l1Position.x,
+        l1Position.y + config.scale_L1 / 1.5,
+        l1Position.z
+      );
+      label.name = className;
+      return label;
+    }
+    const label = createLabel(d, l1Position);
+    nodes.add(label);
 
     // calculate radial tree around L1 nodes
     tree(d)
@@ -392,7 +429,6 @@ function initNodes() {
   });
 
   //  geometry
-  var geometry = new THREE.BufferGeometry();
   // positions
   geometry.addAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.addAttribute(
@@ -409,7 +445,6 @@ function initNodes() {
   );
   geometry.addAttribute("isNode", new THREE.BufferAttribute(isNode, 1));
 
-  nodes = new THREE.Points(geometry, material);
   nodes.name = "nodes";
   scene.add(nodes);
 
@@ -624,6 +659,7 @@ function onWindowResize() {
   camera.updateProjectionMatrix();
 
   renderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
   // drawHTMLEls();
 }
 

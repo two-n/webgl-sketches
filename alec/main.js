@@ -221,7 +221,7 @@ function init() {
       color: { value: new THREE.Color(0xffffff) },
       elevation: { value: config.elevation },
       percElevated: { value: 0.0 }, // percent elevated, used in shader to TWEEN values
-      percExpanded: { value: 0.0 }, // percent elevated, used in shader to TWEEN values
+      percExpanded: { value: 0.0 }, // percent expanded, used in shader to TWEEN values
       count: { value: 0.0 }, // count that ticks up on each render
     },
     vertexShader: VERT,
@@ -262,30 +262,13 @@ function render() {
   count += 0.1;
   material.uniforms.count.value = count;
 
-  // var scales = field.geometry.attributes.scale.array;
-
   raycaster.setFromCamera(mouse, camera);
-  // raycaster.params.Points.threshold = view === 2 ? 40 : 20;
-  // nodes.geometry.boundingBox = null;
   const intersects = raycaster.intersectObject(nodes);
 
   if (intersects.length > 0) {
     if (view >= 2) {
-      // console.log("intersects", intersects);
       INTERSECTED = intersects[0].point;
     }
-    //     const selectedIntersects = intersects.filter(({ index }) =>
-    //       selection.has(Math.floor(index / AMOUNTX) + "," + (index % AMOUNTY))
-    //     );
-    //     INTERSECTED = selectedIntersects.length
-    //       ? selectedIntersects[0].index
-    //       : null;
-    //     scales[INTERSECTED] = 250; // make dot bigger on mouse hover
-    //   } else {
-    //     INTERSECTED = intersects[0].index;
-    //     scales[INTERSECTED] = 64;
-    // } else if (INTERSECTED !== null) {
-    //   INTERSECTED = null;
   }
 
   field.geometry.attributes.scale.needsUpdate = true;
@@ -329,13 +312,6 @@ function initNodes() {
   var isNode = new Float32Array(numNodes).fill(1.0); // flag for nodes vs. field
 
   var lineVertices = [];
-  /**
-   * go through all the fanJourney nodes and assign:
-   * (1) initial `positions` (on the grid)
-   * (2) `customPositions` - elevated up
-   * (3) `scale` - L1 normal size, descendents are 0
-   * (4) `customScale` - L1 are larger, descendents have relative size
-   * */
 
   // calculate positions
   fanJourney.children.map(d => {
@@ -344,20 +320,21 @@ function initNodes() {
       ind_i = id * 2,
       scale_i = id;
 
+    // get pre-defined coords
     var [ix, iy] = selectionArray[id].split(",");
-    // x and z are the same, y is elevated
+    // x and z are the same starting and final position, y is elevated in final
     positions[pos_i] = startingPosition[pos_i] = xpos(ix); // x
     startingPosition[pos_i + 1] = 100; // normal y
     positions[pos_i + 1] = config.elevation; // elevated y
     positions[pos_i + 2] = startingPosition[pos_i + 2] = zpos(iy); // z
 
-    lineVertices.push(
-      new THREE.Vector3(
-        positions[pos_i],
-        positions[pos_i + 1],
-        positions[pos_i + 2]
-      )
+    const l1Position = new THREE.Vector3(
+      positions[pos_i],
+      positions[pos_i + 1],
+      positions[pos_i + 2]
     );
+
+    lineVertices.push(l1Position);
 
     // used for calculating sine movements
     indices[ind_i] = ix;
@@ -371,22 +348,30 @@ function initNodes() {
       .descendants()
       .reverse()
       .forEach(e => {
+        console.log("e", e);
         var p = e.data.data.id * 3;
+
+        // if not L1 parent
         if (d.data.data.id != e.data.data.id) {
-          const theta = e.x;
+          const radialPosition = calcRadialPosition(e.x, e.y, l1Position);
+          const parentRadialPosition =
+            e.height === 0 // check heirarchy level
+              ? l1Position
+              : calcRadialPosition(e.parent.x, e.parent.y, l1Position);
 
-          startingPosition[p] = positions[pos_i]; // x
-          positions[p] = positions[pos_i] + Math.cos(theta + Math.PI / 2) * e.y; // radial x
-          startingPosition[p + 1] = positions[pos_i + 1]; // y
-          positions[p + 1] =
-            positions[pos_i + 1] + Math.sin(theta - Math.PI / 2) * e.y; // radial y
+          startingPosition[p] = l1Position.x; // starting x
+          positions[p] = radialPosition.x; // radial x
 
-          startingPosition[p + 2] = positions[pos_i + 2]; //z
-          positions[p + 2] =
-            positions[pos_i + 2] + Math.cos(theta + Math.PI / 2) * d.y; // radial z
+          startingPosition[p + 1] = l1Position.y; // starting y
+          positions[p + 1] = radialPosition.y; // radial y
+
+          startingPosition[p + 2] = l1Position.z; // starting z
+          positions[p + 2] = radialPosition.z; // radial z
 
           scales[e.data.data.id] = 0.0;
           customScales[e.data.data.id] = config.scale_L2;
+
+          // calculate self vert and parent vert and create line, add to scene
         }
       });
   });
@@ -413,13 +398,20 @@ function initNodes() {
   nodes.name = "nodes";
   scene.add(nodes);
 
-  var curve = new THREE.CatmullRomCurve3(lineVertices),
-    curvePoints = curve.getPoints(config.line_segments),
-    lineGeometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
+  function createCurveLine(lineVertices, material, name = "line") {
+    var curve = new THREE.CatmullRomCurve3(lineVertices),
+      curvePoints = curve.getPoints(config.line_segments),
+      lineGeometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
 
-  line = new THREE.Line(lineGeometry, lineMaterial);
-  lineGeometry.verticesNeedUpdate = true;
-  lineGeometry.setDrawRange(0, 1);
+    lineGeometry.verticesNeedUpdate = true;
+    lineGeometry.setDrawRange(0, 1);
+
+    const curvedLine = new THREE.Line(lineGeometry, material);
+    curvedLine.name = name;
+    return curvedLine;
+  }
+
+  line = createCurveLine(lineVertices, lineMaterial, "rootLine");
   scene.add(line);
 }
 
@@ -662,6 +654,14 @@ function get3Dfrom2d(screenX, screenY, at, camera, raycaster) {
 
   // get position of ray in direction of pos scalled by t (1000)
   return raycaster.ray.at(at, new THREE.Vector3());
+}
+
+function calcRadialPosition(theta, y, origin) {
+  return new THREE.Vector3(
+    origin.x + Math.cos(theta + Math.PI / 2) * y,
+    origin.y + Math.sin(theta - Math.PI / 2) * y,
+    origin.z + Math.cos(theta + Math.PI / 2) * y
+  );
 }
 
 // previous render logic below:

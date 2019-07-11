@@ -37,12 +37,15 @@ attribute float scale;
 attribute float customScale;
 attribute vec2 indices;
 attribute vec3 startingPosition;
-// attribute float isNode;
+attribute float nodeLevel;
 
 uniform float count;
 uniform float elevation;
+uniform float percScaled; // used for scaling L1s
 uniform float percElevated; // percentage elevated
 uniform float percExpanded; // percentage expanded (for radial layout)
+uniform float phase;
+uniform float granularity;
 
 // FUCNTION: interpolation for floats
 float interpolate(float start, float end, float perc) {
@@ -59,8 +62,26 @@ void main() {
   // calculate intermediate position between field and elevated
   vec3 tweenPos =  pos + (position - pos) * percExpanded;
 
-  // updates to customScale when radial is expanded
-  float tween_scale = interpolate(scale, customScale, percExpanded);// node scale based on whether or not expanded
+
+  // SCALING
+  float tween_scale;
+
+  if (nodeLevel == 1.0) {  // L1 Nodes
+    if (phase > 0.0 && phase <= 1.0) {
+      float perc = fract(phase) == 0.0 ? 1.0 : fract(phase);
+      tween_scale = interpolate(0.1, scale, perc);
+    }
+    else if (phase > 0.0) {
+      tween_scale = scale;
+    }
+  }
+  else if (nodeLevel > 1.0 && phase > 3.0){  // L+ Nodes
+    float perc = fract(phase) == 0.0 ? 1.0 : fract(phase);
+    tween_scale = interpolate(0.1, scale, perc);
+  }
+  else {
+    tween_scale = 0.0;
+  }
 
   // TODO: still need to deal with L1 scale change
   vec4 mvPosition = modelViewMatrix * vec4( tweenPos, 1.0 );
@@ -264,9 +285,7 @@ function init() {
   fieldMaterial = new THREE.ShaderMaterial({
     uniforms: {
       color: { value: new THREE.Color(0xffffff) },
-      elevation: { value: config.elevation },
       percElevated: { value: 0.0 }, // percent elevated, used in shader to TWEEN values
-      percExpanded: { value: 0.0 }, // percent expanded, used in shader to TWEEN values
       count: { value: 0.0 }, // count that ticks up on each render
     },
     vertexShader: FIELD_VERT,
@@ -274,8 +293,18 @@ function init() {
   });
 
   nodesMaterial = fieldMaterial.clone(); //.setValues({ vertexShader: NODES_VERT });
-  nodesMaterial.setValues({ vertexShader: NODES_VERT });
-  console.log("nodesMaterial", nodesMaterial);
+  nodesMaterial.setValues({
+    uniforms: {
+      color: { value: new THREE.Color(0xffffff) },
+      percElevated: { value: 0.0 }, // percent elevated, used in shader to TWEEN values
+      count: { value: 0.0 }, // count that ticks up on each render
+      elevation: { value: config.elevation },
+      percExpanded: { value: 0.0 }, // percent expanded, used in shader to TWEEN values
+      phase: { value: state.view },
+      granularity: { value: state.granularity },
+    },
+    vertexShader: NODES_VERT,
+  });
 
   lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff }); //red: 0xff0000
 
@@ -371,12 +400,13 @@ function initNodes() {
 
   var positions = new Float32Array(numNodes * 3), // 3 positions for each vertex (x, y, z)
     startingPosition = new Float32Array(numNodes * 3); // 3 positions for each vertex (x, y, z)
+
   var indices = new Float32Array(numNodes * 2); // 2 positions for each vertex (x, y, z)
 
   var scales = new Float32Array(numNodes), // 1 for each
     customScales = new Float32Array(numNodes); // 1 for each
 
-  var isNode = new Float32Array(numNodes).fill(1.0); // flag for nodes vs. field
+  var nodeLevel = new Float32Array(numNodes); //.fill(1.0); // flag for nodes vs. field
 
   var lineVertices = [];
 
@@ -387,9 +417,7 @@ function initNodes() {
   fanJourney.children.map(d => {
     var id = d.data.data.id,
       pos_i = id * 3,
-      ind_i = id * 2,
-      scale_i = id;
-
+      ind_i = id * 2;
     // get pre-defined coords
     var [ix, iy] = selectionArray[id].split(",");
     // x and z are the same starting and final position, y is elevated in final
@@ -408,9 +436,9 @@ function initNodes() {
     indices[ind_i] = ix;
     indices[ind_i + 1] = iy;
 
-    scales[scale_i] = config.scale_default;
-    customScales[scale_i] = config.scale_L1;
-
+    scales[id] = config.scale_L1; //config.scale_default;
+    customScales[id] = config.scale_L1;
+    nodeLevel[id] = 1.0;
     lineVertices.push(l1Position);
 
     function createLabel(d, l1Position, className = "label") {
@@ -455,8 +483,9 @@ function initNodes() {
           startingPosition[p + 2] = l1Position.z; // starting z
           positions[p + 2] = radialPosition.z; // radial z
 
-          scales[e.data.data.id] = 0.0;
+          scales[e.data.data.id] = config.scale_L2; //0.0;
           customScales[e.data.data.id] = config.scale_L2;
+          nodeLevel[e.data.data.id] = e.depth;
 
           // calculate self vert and parent vert and create line, add to scene
           const nodeLine = createCurveLine(
@@ -484,7 +513,7 @@ function initNodes() {
     "customScale",
     new THREE.BufferAttribute(customScales, 1)
   );
-  geometry.addAttribute("isNode", new THREE.BufferAttribute(isNode, 1));
+  geometry.addAttribute("nodeLevel", new THREE.BufferAttribute(nodeLevel, 1));
 
   nodes.name = "nodes";
   scene.add(nodes);
@@ -582,12 +611,20 @@ function transition_default() {
 
 function transition_scaleL1Dots() {
   // Tween scale of L1 dots from default -> scale_L1
+  new TWEEN.Tween(nodesMaterial.uniforms.phase)
+    .to({ value: state.view }, 1000) // going to 1
+    .easing(TWEEN.Easing.Quadratic.Out)
+    .start();
 }
 
 function transition_elevateNodes() {
   // Bring up nodes from field
   new TWEEN.Tween(state)
     .to({ percElevated: 1.0 }, 1000)
+    .easing(TWEEN.Easing.Quadratic.Out)
+    .start();
+  new TWEEN.Tween(nodesMaterial.uniforms.phase)
+    .to({ value: state.view }, 1000)
     .easing(TWEEN.Easing.Quadratic.Out)
     .start();
 }
@@ -605,6 +642,10 @@ function transition_expandRadial() {
   // tween uniform.percElevated to 1
   new TWEEN.Tween(nodesMaterial.uniforms.percExpanded)
     .to({ value: 1.0 }, 1000)
+    .easing(TWEEN.Easing.Quadratic.Out)
+    .start();
+  new TWEEN.Tween(nodesMaterial.uniforms.phase)
+    .to({ value: state.view }, 1000)
     .easing(TWEEN.Easing.Quadratic.Out)
     .start();
 

@@ -51,8 +51,14 @@
         font-family: Tungsten;
         text-transform: uppercase;
         padding: 2px;
-        /* background: rgba(0, 0, 0, 0.6); */
         font-size: 3em;
+        opacity: 0;
+        transition-property: opacity;
+        transition-duration: 100ms;
+      }
+
+      .label.visible {
+        opacity: 1;
       }
 
       svg.tree {

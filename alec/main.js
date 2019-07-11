@@ -62,10 +62,8 @@ void main() {
   // calculate intermediate position between field and elevated
   vec3 tweenPos =  pos + (position - pos) * percExpanded;
 
-
   // SCALING
   float tween_scale;
-
   if (nodeLevel == 1.0) {  // L1 Nodes
     if (phase > 0.0 && phase <= 1.0) {
       float perc = fract(phase) == 0.0 ? 1.0 : fract(phase);
@@ -83,7 +81,6 @@ void main() {
     tween_scale = 0.0;
   }
 
-  // TODO: still need to deal with L1 scale change
   vec4 mvPosition = modelViewMatrix * vec4( tweenPos, 1.0 );
   gl_PointSize = tween_scale * ( 500.0 / - mvPosition.z );
   gl_Position = projectionMatrix * mvPosition;
@@ -627,6 +624,8 @@ function transition_elevateNodes() {
     .to({ value: state.view }, 1000)
     .easing(TWEEN.Easing.Quadratic.Out)
     .start();
+
+  d3.selectAll(".label").classed("visible", true);
 }
 
 function transition_drawLine() {

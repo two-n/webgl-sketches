@@ -1,22 +1,17 @@
 const FIELD_VERT = `
-// field vertex shader
 attribute float scale;
 attribute float customScale;
 attribute vec2 indices;
-attribute vec3 startingPosition;
-attribute float isNode;
 
 uniform float count;
-uniform float elevation;
 uniform float percElevated; // percentage elevated
-uniform float percExpanded; // percentage expanded (for radial layout)
 
-// interpolation for floats
+// FUNCTION: interpolation for floats
 float interpolate(float start, float end, float perc) {
 	return (start + (end - start) * perc);
 }
 
-// dynamically scale field points
+// FUNCTION: dynamically scale field points
 float scaleField(float scale, float ix, float iy, float count) {
 	return (sin((ix + count) * 0.3) + 1.0) * 8.0 + (sin((iy + count) * 0.5) + 1.0) * 8.0;
 }
@@ -25,24 +20,13 @@ void main() {
   // calculate undulating y
   float dynamic_y = sin((indices.x + count) * 0.3) * 50.0 + sin((indices.y + count) * 0.5) * 50.0;
 
-  // nodes: use startingPosition.x, tweenY, startingPosition.z
   // field: use position.x, dynamic_y,  position.z
-  vec3 pos = isNode > 0.0 ?
-    vec3(startingPosition.x, interpolate(dynamic_y, elevation, percElevated), startingPosition.z):
-    vec3(position.x, dynamic_y, position.z);
+  vec3 pos = vec3(position.x, dynamic_y, position.z);
 
-  // calculate intermediate position between field and elevated
-  vec3 tweenPos = isNode > 0.0 ?
-    pos + (position - pos) * percExpanded : // tween position
-    pos; // else take field position
+  float tween_scale = interpolate(scale, customScale, percElevated);
+  float dynamic_scale = scaleField(tween_scale, indices.x, indices.y, count);
 
-  // updates to customScale when radial is expanded
-  float tween_scale = isNode > 0.0 ? // if is node
-    interpolate(scale, customScale, percExpanded):// node scale based on whether or not expanded
-    interpolate(scale, customScale, percElevated);// field scale based on whether or not elevated
-
-  // TODO: still need to deal with L1 scale change
-  vec4 mvPosition = modelViewMatrix * vec4( tweenPos, 1.0 );
+  vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
   gl_PointSize = tween_scale * ( 500.0 / - mvPosition.z );
   gl_Position = projectionMatrix * mvPosition;
 }

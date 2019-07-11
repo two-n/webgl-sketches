@@ -1,4 +1,54 @@
-const VERT = `
+const FIELD_VERT = `
+// field vertex shader
+attribute float scale;
+attribute float customScale;
+attribute vec2 indices;
+attribute vec3 startingPosition;
+attribute float isNode;
+
+uniform float count;
+uniform float elevation;
+uniform float percElevated; // percentage elevated
+uniform float percExpanded; // percentage expanded (for radial layout)
+
+// interpolation for floats
+float interpolate(float start, float end, float perc) {
+	return (start + (end - start) * perc);
+}
+
+// dynamically scale field points
+float scaleField(float scale, float ix, float iy, float count) {
+	return (sin((ix + count) * 0.3) + 1.0) * 8.0 + (sin((iy + count) * 0.5) + 1.0) * 8.0;
+}
+
+void main() {
+  // calculate undulating y
+  float dynamic_y = sin((indices.x + count) * 0.3) * 50.0 + sin((indices.y + count) * 0.5) * 50.0;
+
+  // nodes: use startingPosition.x, tweenY, startingPosition.z
+  // field: use position.x, dynamic_y,  position.z
+  vec3 pos = isNode > 0.0 ?
+    vec3(startingPosition.x, interpolate(dynamic_y, elevation, percElevated), startingPosition.z):
+    vec3(position.x, dynamic_y, position.z);
+
+  // calculate intermediate position between field and elevated
+  vec3 tweenPos = isNode > 0.0 ?
+    pos + (position - pos) * percExpanded : // tween position
+    pos; // else take field position
+
+  // updates to customScale when radial is expanded
+  float tween_scale = isNode > 0.0 ? // if is node
+    interpolate(scale, customScale, percExpanded):// node scale based on whether or not expanded
+    interpolate(scale, customScale, percElevated);// field scale based on whether or not elevated
+
+  // TODO: still need to deal with L1 scale change
+  vec4 mvPosition = modelViewMatrix * vec4( tweenPos, 1.0 );
+  gl_PointSize = tween_scale * ( 500.0 / - mvPosition.z );
+  gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
+const NODES_VERT = `
 attribute float scale;
 attribute float customScale;
 attribute vec2 indices;
@@ -128,7 +178,7 @@ var selection = new Set(selectionArray),
   fanJourney;
 var container, stats;
 var camera, scene, renderer, labelRenderer, raycaster, controls;
-var material, material2, lineMaterial;
+var fieldMaterial, nodesMaterial, lineMaterial;
 
 var field,
   nodes,
@@ -142,9 +192,17 @@ var mouse = new THREE.Vector2(),
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
 
-var view = 0; //
+// var view = 0; //
 var transitionStart = -5;
 var keyPoints = [];
+
+var state = {
+  view: 0,
+  selectedL1: null,
+  granularity: 3,
+  percElevated: 0,
+  percExpanded: 0,
+};
 
 /**
  * PULL Fan Journey DATA
@@ -231,7 +289,7 @@ function init() {
    */
   // material - used for both field and nodes
   // notes: https://stackoverflow.com/a/45472747
-  material = new THREE.ShaderMaterial({
+  fieldMaterial = new THREE.ShaderMaterial({
     uniforms: {
       color: { value: new THREE.Color(0xffffff) },
       elevation: { value: config.elevation },
@@ -239,9 +297,13 @@ function init() {
       percExpanded: { value: 0.0 }, // percent expanded, used in shader to TWEEN values
       count: { value: 0.0 }, // count that ticks up on each render
     },
-    vertexShader: VERT,
+    vertexShader: FIELD_VERT,
     fragmentShader: FRAG,
   });
+
+  nodesMaterial = fieldMaterial.clone(); //.setValues({ vertexShader: NODES_VERT });
+  nodesMaterial.setValues({ vertexShader: NODES_VERT });
+  console.log("nodesMaterial", nodesMaterial);
 
   lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff }); //red: 0xff0000
 
@@ -254,7 +316,7 @@ function init() {
   window.addEventListener(
     "click",
     () => {
-      if (view >= 2 && INTERSECTED) {
+      if (state.view >= 2 && INTERSECTED) {
         console.log(INTERSECTED);
         zoomCameraTo(INTERSECTED);
       }
@@ -275,7 +337,11 @@ function animate() {
 function render() {
   // pass in count to shader - used for undulations
   count += 0.1;
-  material.uniforms.count.value = count;
+  fieldMaterial.uniforms.count.value = count;
+  nodesMaterial.uniforms.count.value = count;
+
+  fieldMaterial.uniforms.percElevated.value = state.percElevated;
+  nodesMaterial.uniforms.percElevated.value = state.percElevated;
 
   // draw lines for radial diagram using percExpanded uniform
   scene.children
@@ -283,7 +349,7 @@ function render() {
     .map(d => {
       d.geometry.setDrawRange(
         0,
-        material.uniforms.percExpanded.value * config.line_segments
+        nodesMaterial.uniforms.percExpanded.value * config.line_segments
       );
     });
 
@@ -291,14 +357,17 @@ function render() {
   const intersects = raycaster.intersectObject(nodes);
 
   if (intersects.length > 0) {
-    if (view >= 2) {
+    if (state.view >= 2) {
       INTERSECTED = intersects[0].point;
     }
   }
 
   field.geometry.attributes.scale.needsUpdate = true;
 
-  material.uniforms.count.needsUpdate = true;
+  fieldMaterial.uniforms.count.needsUpdate = true;
+  nodesMaterial.uniforms.count.needsUpdate = true;
+  fieldMaterial.uniforms.percElevated.needsUpdate = true;
+  nodesMaterial.uniforms.percElevated.needsUpdate = true;
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
 }
@@ -340,7 +409,7 @@ function initNodes() {
   var lineVertices = [];
 
   var geometry = new THREE.BufferGeometry();
-  nodes = new THREE.Points(geometry, material);
+  nodes = new THREE.Points(geometry, nodesMaterial);
 
   // calculate positions
   fanJourney.children.map(d => {
@@ -490,7 +559,7 @@ function initField() {
     new THREE.BufferAttribute(customScales, 1)
   );
 
-  field = new THREE.Points(geometry, material);
+  field = new THREE.Points(geometry, fieldMaterial);
   field.name = "field";
   scene.add(field);
 }
@@ -504,9 +573,9 @@ function onKeyPress(e) {
   if (e.keyCode === 32) {
     // space bar
     transitionStart = count;
-    view = (view + 1) % 5;
-    console.log("view", view);
-    switch (view) {
+    state.view = (state.view + 1) % 5;
+    console.log("view", state.view);
+    switch (state.view) {
       case 0:
         console.log("case0");
         transition_default();
@@ -545,8 +614,8 @@ function transition_scaleL1Dots() {
 
 function transition_elevateNodes() {
   // Bring up nodes from field
-  new TWEEN.Tween(material.uniforms.percElevated)
-    .to({ value: 1.0 }, 1000)
+  new TWEEN.Tween(state)
+    .to({ percElevated: 1.0 }, 1000)
     .easing(TWEEN.Easing.Quadratic.Out)
     .start();
 }
@@ -562,7 +631,7 @@ function transition_drawLine() {
 
 function transition_expandRadial() {
   // tween uniform.percElevated to 1
-  new TWEEN.Tween(material.uniforms.percExpanded)
+  new TWEEN.Tween(nodesMaterial.uniforms.percExpanded)
     .to({ value: 1.0 }, 1000)
     .easing(TWEEN.Easing.Quadratic.Out)
     .start();

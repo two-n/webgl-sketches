@@ -110,7 +110,7 @@ var config = {
   scale_L3: 20,
   elevation: 700, // y offset
   camera_default: { x: 2500, y: 500, z: -2500 },
-  camera_elevated: { x: 1500, y: 1000, z: -2750 },
+  camera_elevated: { x: 1500, y: 1000, z: -2750 }, // maybe take into account aspect here
   tree_diameter: 200, //500,
   line_segments: 200,
 };
@@ -262,6 +262,8 @@ function init() {
   labelRenderer.domElement.style.top = 0;
   document.body.appendChild(labelRenderer.domElement);
 
+  labelRenderer.domElement.className = "renderer";
+  renderer.domElement.className = "renderer";
   // STATS uncomment
   // stats = new Stats();
   // stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -272,6 +274,8 @@ function init() {
    * note: controls needed for our 2D -> 3D to work, unclear why
    * */
   controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.rotateSpeed = 0.07;
   controls.update();
 
   /**
@@ -309,7 +313,11 @@ function init() {
   initNodes();
 
   document.addEventListener("mousemove", onDocumentMouseMove, false);
-  window.addEventListener("resize", onWindowResize, false);
+  window.addEventListener(
+    "resize",
+    () => onWindowResize(window.innerWidth, window.innerHeight),
+    false
+  );
   window.addEventListener("keydown", onKeyPress, false);
   window.addEventListener(
     "click",
@@ -323,12 +331,12 @@ function init() {
   );
 }
 
-function animate() {
+function animate(time = 0) {
   requestAnimationFrame(animate);
 
   render();
   controls.update();
-  TWEEN.update();
+  TWEEN.update(time);
   // stats.update();
 }
 
@@ -617,9 +625,10 @@ function transition_scaleL1Dots() {
 function transition_elevateNodes() {
   // Bring up nodes from field
   new TWEEN.Tween(state)
-    .to({ percElevated: 1.0 }, 1000)
-    .easing(TWEEN.Easing.Quadratic.Out)
+    .to({ percElevated: 1.0 }, 1500)
+    .easing(TWEEN.Easing.Quadratic.In)
     .start();
+
   new TWEEN.Tween(nodesMaterial.uniforms.phase)
     .to({ value: state.view }, 1000)
     .easing(TWEEN.Easing.Quadratic.Out)
@@ -643,6 +652,8 @@ function transition_expandRadial() {
     .to({ value: 1.0 }, 1000)
     .easing(TWEEN.Easing.Quadratic.Out)
     .start();
+
+  // used for scaling
   new TWEEN.Tween(nodesMaterial.uniforms.phase)
     .to({ value: state.view }, 1000)
     .easing(TWEEN.Easing.Quadratic.Out)
@@ -651,30 +662,36 @@ function transition_expandRadial() {
   // update camera angle
   new TWEEN.Tween(camera.position)
     .to(config.camera_elevated, 1500)
-    .delay(1000)
-    .easing(TWEEN.Easing.Quadratic.In)
+    // .delay(1500)
+    .easing(TWEEN.Easing.Quadratic.InOut)
     .start();
 
   new TWEEN.Tween(controls.target)
     .to(new THREE.Vector3(), 1500)
     .delay(1500)
-    .easing(TWEEN.Easing.Quadratic.In)
+    .easing(TWEEN.Easing.Quadratic.InOut)
     .start();
+
+  d3.selectAll(".renderer").classed("shifted-left", false);
 }
 
 function zoomCameraTo(vec3) {
   // camera.lookAt(vec3);
   // TODO: figure out how to make this responsive to different sizes
-
-  new TWEEN.Tween(camera.position)
-    .to({ x: vec3.x, y: vec3.y + 100, z: vec3.z - 500 / camera.aspect }, 1500)
-    .easing(TWEEN.Easing.Quadratic.In)
-    .start();
-
+  /// camera.aspect
   new TWEEN.Tween(controls.target)
     .to(vec3, 1500) // TODO adjust lookat vector to make it to the right of center
-    .easing(TWEEN.Easing.Quadratic.Out)
+    .easing(TWEEN.Easing.Quadratic.InOut)
     .start();
+
+  new TWEEN.Tween(camera.position)
+    .to({ x: vec3.x, y: vec3.y + 100, z: vec3.z - 500 }, 1500)
+    .easing(TWEEN.Easing.Quadratic.InOut)
+    .delay(1500)
+    .start();
+
+  d3.selectAll(".renderer").classed("shifted-left", true);
+  // d3.select(labelRenderer.domElement).classed("shifted-left", true);
 }
 
 /**
@@ -732,15 +749,18 @@ function interpolate(from, to, percentDone) {
   return from + (to - from) * percentDone;
 }
 
-function onWindowResize() {
-  windowHalfX = window.innerWidth / 2;
-  windowHalfY = window.innerHeight / 2;
+function onWindowResize(
+  newWidth = window.innerWidth,
+  newHeight = window.innerHeight
+) {
+  windowHalfX = newWidth / 2;
+  windowHalfY = newHeight / 2;
 
-  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.aspect = newWidth / newHeight;
   camera.updateProjectionMatrix();
 
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  labelRenderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(newWidth, newHeight);
+  labelRenderer.setSize(newWidth, newHeight);
   // drawHTMLEls();
 }
 

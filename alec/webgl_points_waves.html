@@ -16,6 +16,7 @@
         position: relative;
         height: 100%;
         width: 100%;
+        background-color: black;
       }
       #info {
         position: absolute;
@@ -54,11 +55,22 @@
         font-size: 3em;
         opacity: 0;
         transition-property: opacity;
-        transition-duration: 100ms;
+        transition-duration: 1000ms;
       }
 
       .label.visible {
         opacity: 1;
+      }
+
+      .renderer {
+        transition-property: transform;
+        transition-duration: 1500ms;
+        transition-delay: 3000ms;
+      }
+
+      .shifted-left {
+        position: absolute;
+        transform: translate(-30%, 0);
       }
 
       svg.tree {

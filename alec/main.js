@@ -393,6 +393,8 @@ function render() {
   nodesMaterial.uniforms.percElevated.needsUpdate = true;
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
+
+  d3.selectAll(".l2").classed("title-view", state.isTitle);
 }
 
 /**
@@ -463,22 +465,7 @@ function initNodes() {
     nodeLevel[id] = 1.0;
     lineVertices.push(l1Position);
 
-    function createLabel(d, l1Position, className = "label") {
-      const labelDiv = document.createElement("div");
-      labelDiv.className = className;
-      labelDiv.textContent = d.data.data["Node Name"];
-      // labelDiv.style.marginTop = "-1em";
-
-      const label = new THREE.CSS2DObject(labelDiv);
-      label.position.set(
-        l1Position.x,
-        l1Position.y + config.scale_L1 / 1.5,
-        l1Position.z
-      );
-      label.name = className;
-      return label;
-    }
-    const label = createLabel(d, l1Position);
+    const label = createLabel(d, l1Position, "label l1");
     nodes.add(label);
 
     // calculate radial tree around L1 nodes
@@ -515,6 +502,9 @@ function initNodes() {
             lineMaterial,
             "nodeLine"
           );
+
+          const l2label = createLabel(e, radialPosition, "label l2");
+          nodes.add(l2label);
           scene.add(nodeLine);
         }
       });
@@ -657,7 +647,7 @@ function transition_elevateNodes() {
     .easing(TWEEN.Easing.Quadratic.Out)
     .start();
 
-  d3.selectAll(".label").classed("visible", true);
+  d3.selectAll(".label.l1").classed("visible", true);
 }
 
 function transition_drawLine() {
@@ -873,6 +863,23 @@ function setupGUI() {
   cameraFolder.add(camera.position, "x");
   cameraFolder.add(camera.position, "y");
   cameraFolder.add(camera.position, "z");
+}
+
+function createLabel(d, l1Position, className = "label") {
+  const labelDiv = document.createElement("div");
+  labelDiv.className = className;
+  labelDiv.textContent = d.data.data["Node Name"];
+  // labelDiv.style.marginTop = "-1em";
+
+  const y_offset = (d.data.data["Node Hierarchy"]>1)? 0 : config.scale_L1 / 1.5;
+  const label = new THREE.CSS2DObject(labelDiv);
+  label.position.set(
+    l1Position.x,
+    l1Position.y + y_offset,
+    l1Position.z
+  );
+  label.name = className;
+  return label;
 }
 
 // previous render logic below:

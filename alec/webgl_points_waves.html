@@ -16,7 +16,7 @@
         position: relative;
         height: 100%;
         width: 100%;
-        background-color: black;
+        background-color: grey;
       }
       #info {
         position: absolute;
@@ -27,6 +27,7 @@
         text-align: center;
         z-index: 1;
         color: white;
+        pointer-events: none;
       }
       .ui-nodes {
         position: absolute;
@@ -56,6 +57,7 @@
         opacity: 0;
         transition-property: opacity;
         transition-duration: 1000ms;
+        transition-delay: 1500ms;
       }
 
       .label.visible {
@@ -67,11 +69,11 @@
         transition-duration: 1500ms;
         transition-delay: 3000ms;
       }
-
+      /*
       .shifted-left {
         position: absolute;
         transform: translate(-30%, 0);
-      }
+      } */
 
       svg.tree {
         position: absolute;
@@ -80,7 +82,7 @@
   </head>
   <body>
     <div id="info">
-      click SPACE to toggle
+      <!-- click SPACE to toggle -->
       <!-- &#x2190 and &#x2192 -->
     </div>
     <div class="ui-nodes"></div>
@@ -90,6 +92,7 @@
     <script src="js/OrbitControls.js"></script>
     <script src="js/CSS2DRenderer.js"></script>
     <script src="js/Tween.js"></script>
+    <script src="js/dat.gui.min.js"></script>
 
     <script src="js/d3.min.js"></script>
 

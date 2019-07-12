@@ -3,6 +3,9 @@ attribute float scale;
 attribute float customScale;
 attribute vec2 indices;
 
+uniform float amplitude;
+uniform float scaleFactor;
+uniform float freqFactor;
 uniform float count;
 uniform float percElevated; // percentage elevated
 
@@ -17,17 +20,19 @@ float scaleField(float scale, float ix, float iy, float count) {
 }
 
 void main() {
+  float freq = count * freqFactor;
+
   // calculate undulating y
-  float dynamic_y = sin((indices.x + count) * 0.3) * 50.0 + sin((indices.y + count) * 0.5) * 50.0;
+  float dynamic_y = sin((indices.x + freq) * 0.3) * amplitude + sin((indices.y + freq) * 0.5) * amplitude;
 
   // field: use position.x, dynamic_y,  position.z
   vec3 pos = vec3(position.x, dynamic_y, position.z);
 
   float tween_scale = interpolate(scale, customScale, percElevated);
-  float dynamic_scale = scaleField(tween_scale, indices.x, indices.y, count);
+  float dynamic_scale = scaleField(tween_scale, indices.x, indices.y, freq);
 
   vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
-  gl_PointSize = tween_scale * ( 500.0 / - mvPosition.z );
+  gl_PointSize = tween_scale * scaleFactor * ( 500.0 / - mvPosition.z );
   gl_Position = projectionMatrix * mvPosition;
 }
 `;
@@ -89,9 +94,11 @@ void main() {
 
 const FRAG = `
 uniform vec3 color;
+uniform float alpha;
+
 void main() {
   if ( length( gl_PointCoord - vec2( 0.5, 0.5 ) ) > 0.475 ) discard;
-  gl_FragColor = vec4( color, 1.0 );
+  gl_FragColor = vec4( color.r, color.g, color.b, alpha );
 }
 `;
 
@@ -104,14 +111,14 @@ var SEPARATION = 100,
   AMOUNTY = 50;
 var intcpt = 2500;
 var config = {
-  scale_default: 25,
+  scale_default: 18,
   scale_L1: 100,
   scale_L2: 25,
   scale_L3: 20,
   elevation: 700, // y offset
   camera_default: { x: 2500, y: 500, z: -2500 },
   camera_elevated: { x: 1500, y: 1000, z: -2750 }, // maybe take into account aspect here
-  tree_diameter: 200, //500,
+  tree_diameter: 150, //500,
   line_segments: 200,
 };
 
@@ -155,7 +162,7 @@ var selectionTree = d3
 var tree = data =>
   d3
     .tree()
-    .size([Math.PI, config.tree_diameter])
+    .size([Math.PI * 2, config.tree_diameter])
     .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth)(data);
 
 var radialTree = new Map();
@@ -167,7 +174,7 @@ var radialTree = new Map();
 var selection = new Set(selectionArray),
   fanJourney;
 var container, stats;
-var camera, scene, renderer, labelRenderer, raycaster, controls;
+var camera, scene, renderer, labelRenderer, raycaster, controls, gui;
 var fieldMaterial, nodesMaterial, lineMaterial;
 
 var field,
@@ -192,6 +199,7 @@ var state = {
   granularity: 3,
   percElevated: 0,
   percExpanded: 0,
+  isTitle: false,
 };
 
 /**
@@ -288,6 +296,10 @@ function init() {
       color: { value: new THREE.Color(0xffffff) },
       percElevated: { value: 0.0 }, // percent elevated, used in shader to TWEEN values
       count: { value: 0.0 }, // count that ticks up on each render
+      alpha: { value: 1.0 },
+      amplitude: { value: 50.0 },
+      scaleFactor: { value: 1.0 },
+      freqFactor: { value: 1.0 },
     },
     vertexShader: FIELD_VERT,
     fragmentShader: FRAG,
@@ -296,6 +308,7 @@ function init() {
   nodesMaterial = fieldMaterial.clone(); //.setValues({ vertexShader: NODES_VERT });
   nodesMaterial.setValues({
     uniforms: {
+      alpha: { value: 1.0 },
       color: { value: new THREE.Color(0xffffff) },
       percElevated: { value: 0.0 }, // percent elevated, used in shader to TWEEN values
       count: { value: 0.0 }, // count that ticks up on each render
@@ -311,6 +324,7 @@ function init() {
 
   initField();
   initNodes();
+  setupGUI();
 
   document.addEventListener("mousemove", onDocumentMouseMove, false);
   window.addEventListener(
@@ -341,6 +355,9 @@ function animate(time = 0) {
 }
 
 function render() {
+  var gl = renderer.context;
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   // pass in count to shader - used for undulations
   count += 0.1;
   fieldMaterial.uniforms.count.value = count;
@@ -533,7 +550,7 @@ function initField() {
   var indices = new Float32Array(numParticles * 2); // 2 positions for each vertex (x, y, z)
   var scales = new Float32Array(numParticles).fill(config.scale_default); // 1 for each, scale number
   var customScales = new Float32Array(numParticles).fill(
-    config.scale_default / 3
+    config.scale_default / 2
   ); // smaller scale when nodes are elevated
   var i = 0,
     k = 0,
@@ -577,9 +594,15 @@ function onKeyPress(e) {
   }
 
   if (e.keyCode === 32) {
+    if (state.isTitle) {
+      console.log("case4");
+      transition_expandRadial();
+      state.isTitle = false;
+      return;
+    }
     // space bar
     transitionStart = count;
-    state.view = (state.view + 1) % 5;
+    state.view = state.view + 1; //% 5;
     console.log("view", state.view);
     switch (state.view) {
       case 0:
@@ -679,6 +702,7 @@ function zoomCameraTo(vec3) {
   // camera.lookAt(vec3);
   // TODO: figure out how to make this responsive to different sizes
   /// camera.aspect
+  this.state.isTitle = true;
   new TWEEN.Tween(controls.target)
     .to(vec3, 1500) // TODO adjust lookat vector to make it to the right of center
     .easing(TWEEN.Easing.Quadratic.InOut)
@@ -814,6 +838,41 @@ function createCurveLine(lineVertices, material, name = "line") {
   const curvedLine = new THREE.Line(lineGeometry, material);
   curvedLine.name = name;
   return curvedLine;
+}
+
+function setupGUI() {
+  var guiObj = {
+    color: 0xffffff,
+    cameraX: camera.position.x,
+    cameraY: camera.position.y,
+    cameraZ: camera.position.z,
+  };
+
+  gui = new dat.GUI();
+
+  var fieldFolder = gui.addFolder("Field");
+  var cameraFolder = gui.addFolder("Camera");
+
+  fieldFolder.addColor(guiObj, "color").onChange(function() {
+    fieldMaterial.uniforms.color.value = new THREE.Color(guiObj.color);
+  });
+
+  fieldFolder
+    .add(fieldMaterial.uniforms.alpha, "value", 0.0, 1.0)
+    .name("alpha");
+  fieldFolder
+    .add(fieldMaterial.uniforms.amplitude, "value", 0, 100)
+    .name("amplitude");
+  fieldFolder
+    .add(fieldMaterial.uniforms.scaleFactor, "value", 0, 5)
+    .name("scaleFactor");
+  fieldFolder
+    .add(fieldMaterial.uniforms.freqFactor, "value", 0, 2)
+    .name("freqFactor");
+
+  cameraFolder.add(camera.position, "x");
+  cameraFolder.add(camera.position, "y");
+  cameraFolder.add(camera.position, "z");
 }
 
 // previous render logic below:

@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>three.js webgl - particles - waves</title>
+    <title>Live Nation Fan Journey</title>
     <meta charset="utf-8" />
     <meta
       name="viewport"
@@ -58,16 +58,30 @@
         transition-property: opacity;
         transition-duration: 1000ms;
         transition-delay: 1500ms;
+        -webkit-text-stroke-width: 0.03em;
+        -webkit-text-stroke-color: black;
       }
 
       .l2 {
-        font-size: 1em;
-        transition-duration: 200ms;
-        transition-delay: 0ms;
+        font-size: 1.5em;
         padding-bottom: 3em;
+        pointer-events: all;
       }
 
-      .l2.title-view:hover {
+      .l2.title-view,
+      .l2.expanded-view:hover {
+        opacity: 1;
+      }
+
+      .l2.expanded-view {
+        transition-delay: 0ms;
+        transition-duration: 0ms;
+        font-size: 1em;
+      }
+
+      .l2.title-view {
+        transition-duration: 1000ms;
+        transition-delay: 1500ms;
         opacity: 1;
       }
 
@@ -80,6 +94,11 @@
         transition-duration: 1500ms;
         transition-delay: 3000ms;
       }
+
+      div.renderer {
+        pointer-events: none;
+      }
+
       /*
       .shifted-left {
         position: absolute;

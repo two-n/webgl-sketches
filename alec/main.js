@@ -303,6 +303,8 @@ function init() {
     },
     vertexShader: FIELD_VERT,
     fragmentShader: FRAG,
+    blending: THREE.AdditiveBlending,
+    transparent: true,
   });
 
   nodesMaterial = fieldMaterial.clone(); //.setValues({ vertexShader: NODES_VERT });
@@ -335,8 +337,9 @@ function init() {
   window.addEventListener("keydown", onKeyPress, false);
   window.addEventListener(
     "click",
-    () => {
-      if (state.view >= 2 && INTERSECTED) {
+    e => {
+      if (state.view >= 2 && INTERSECTED && e.altKey) {
+        // add alt key to orbit controls
         console.log(INTERSECTED);
         zoomCameraTo(INTERSECTED);
       }
@@ -395,6 +398,7 @@ function render() {
   labelRenderer.render(scene, camera);
 
   d3.selectAll(".l2").classed("title-view", state.isTitle);
+  d3.selectAll(".l2").classed("expanded-view", (state.view > 4 && !state.isTitle));
 }
 
 /**
@@ -578,22 +582,23 @@ function initField() {
 }
 
 function onKeyPress(e) {
-  if (e.keyCode === 91) {
-    console.log("case4");
-    transition_expandRadial();
-  }
+  // if (e.keyCode === 91) {
+  //   console.log("case4");
+  //   transition_expandRadial();
+  // }
 
   if (e.keyCode === 32) {
+    // space bar
+    transitionStart = count;
+    state.view = state.view + 1; //% 5;
+    console.log("view", state.view);
+
     if (state.isTitle) {
       console.log("case4");
       transition_expandRadial();
       state.isTitle = false;
       return;
     }
-    // space bar
-    transitionStart = count;
-    state.view = state.view + 1; //% 5;
-    console.log("view", state.view);
     switch (state.view) {
       case 0:
         console.log("case0");
@@ -871,13 +876,10 @@ function createLabel(d, l1Position, className = "label") {
   labelDiv.textContent = d.data.data["Node Name"];
   // labelDiv.style.marginTop = "-1em";
 
-  const y_offset = (d.data.data["Node Hierarchy"]>1)? 0 : config.scale_L1 / 1.5;
+  const y_offset =
+    d.data.data["Node Hierarchy"] > 1 ? 0 : config.scale_L1 / 1.5;
   const label = new THREE.CSS2DObject(labelDiv);
-  label.position.set(
-    l1Position.x,
-    l1Position.y + y_offset,
-    l1Position.z
-  );
+  label.position.set(l1Position.x, l1Position.y + y_offset, l1Position.z);
   label.name = className;
   return label;
 }

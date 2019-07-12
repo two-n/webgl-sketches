@@ -398,7 +398,10 @@ function render() {
   labelRenderer.render(scene, camera);
 
   d3.selectAll(".l2").classed("title-view", state.isTitle);
-  d3.selectAll(".l2").classed("expanded-view", (state.view > 4 && !state.isTitle));
+  d3.selectAll(".l2").classed(
+    "expanded-view",
+    state.view > 4 && !state.isTitle
+  );
 }
 
 /**
